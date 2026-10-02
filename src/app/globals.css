@@ -1,0 +1,108 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --background: #FAF7F2;
+    --foreground: #1C1917;
+    --primary: #800020;
+    --primary-hover: #660019;
+    --gold: #D4AF37;
+    --gold-light: #F7E7B4;
+    --gold-dark: #A67C1E;
+    --teal: #0A3638;
+    --card: #FFFFFF;
+    --card-foreground: #1C1917;
+    --border: #E7DFD5;
+  }
+
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-body), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    overflow-x: hidden;
+    scroll-behavior: smooth;
+  }
+
+  h1, h2, h3, h4, .font-serif-royal {
+    font-family: var(--font-serif), Georgia, serif;
+    letter-spacing: -0.01em;
+  }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #F3ECE2;
+}
+::-webkit-scrollbar-thumb {
+  background: #C4A482;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #800020;
+}
+
+/* Subtle Pochampally Ikat Pattern Background */
+.bg-ikat-pattern {
+  background-image: radial-gradient(rgba(212, 175, 55, 0.15) 1px, transparent 1px), radial-gradient(rgba(128, 0, 32, 0.08) 1px, transparent 1px);
+  background-size: 24px 24px;
+  background-position: 0 0, 12px 12px;
+}
+
+.bg-ikat-diamond {
+  background-color: #FAF7F2;
+  background-image: linear-gradient(135deg, rgba(212, 175, 55, 0.07) 25%, transparent 25%), 
+                    linear-gradient(225deg, rgba(212, 175, 55, 0.07) 25%, transparent 25%), 
+                    linear-gradient(45deg, rgba(212, 175, 55, 0.07) 25%, transparent 25%), 
+                    linear-gradient(315deg, rgba(212, 175, 55, 0.07) 25%, #FAF7F2 25%);
+  background-position: 10px 0, 10px 0, 0 0, 0 0;
+  background-size: 20px 20px;
+  background-repeat: repeat;
+}
+
+/* Gold Zari Border Accent */
+.zari-border-bottom {
+  border-bottom: 2px solid;
+  border-image: linear-gradient(to right, transparent, #D4AF37, #FBF7EE, #D4AF37, transparent) 1;
+}
+
+.zari-border-top {
+  border-top: 2px solid;
+  border-image: linear-gradient(to right, transparent, #D4AF37, #FBF7EE, #D4AF37, transparent) 1;
+}
+
+/* Silk Sheen Effect */
+.silk-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+.silk-shimmer::after {
+  content: "";
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(
+    60deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.25) 50%,
+    transparent 70%
+  );
+  transform: rotate(30deg);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.5s;
+}
+.silk-shimmer:hover::after {
+  opacity: 1;
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  0% { transform: translateX(-100%) rotate(30deg); }
+  100% { transform: translateX(100%) rotate(30deg); }
+}
