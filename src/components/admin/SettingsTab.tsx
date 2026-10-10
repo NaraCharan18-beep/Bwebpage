@@ -10,7 +10,8 @@ import {
   ShieldAlert, 
   ExternalLink,
   Download,
-  AlertTriangle
+  AlertTriangle,
+  MessageCircle
 } from 'lucide-react';
 import { ShopSettings } from '@/lib/types';
 import { resetDataToDefaults } from '@/lib/data-store';
@@ -28,7 +29,7 @@ export default function SettingsTab({
   onDataReset,
 }: SettingsTabProps) {
   // PIN State
-  const [pin, setPin] = useState(settings.admin_pin || 'admin123');
+  const [pin, setPin] = useState(settings.admin_pin || '7579');
   const [pinSuccess, setPinSuccess] = useState(false);
 
   // Supabase State
@@ -44,7 +45,11 @@ export default function SettingsTab({
   const handleSavePin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!pin.trim()) return;
-    await onSaveSettings({ ...settings, admin_pin: pin.trim() });
+    const newPin = pin.trim();
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('pochampally_admin_pin', newPin);
+    }
+    await onSaveSettings({ ...settings, admin_pin: newPin });
     setPinSuccess(true);
     setTimeout(() => setPinSuccess(false), 3000);
   };
@@ -69,8 +74,10 @@ export default function SettingsTab({
     setConfirmReset(false);
   };
 
-  const liveShowroomUrl = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000';
-  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(liveShowroomUrl)}`;
+  const liveShowroomUrl = settings.website_url || 'https://bwebpage-szwt.vercel.app';
+  const whatsappGroupUrl = settings.whatsapp_group_url || 'https://chat.whatsapp.com/J9afqXLrDfR7fhsHYffP9r';
+  const qrCodeUrl = '/images/visiting_card_qr.jpg';
+  const whatsappQrUrl = '/images/whatsapp_qr.jpg';
 
   return (
     <div className="space-y-6 max-w-4xl">
@@ -93,7 +100,7 @@ export default function SettingsTab({
         </div>
 
         <p className="text-xs text-stone-600">
-          This PIN is required to log in to this private management dashboard. Default is <code className="bg-stone-100 px-2 py-0.5 rounded font-mono text-[#800020]">admin123</code>.
+          This PIN is required to log in to this private management dashboard.
         </p>
 
         {pinSuccess && (
@@ -121,54 +128,109 @@ export default function SettingsTab({
         </form>
       </div>
 
-      {/* 2. Showroom Visiting Card QR Code */}
-      <div className="bg-white rounded-3xl p-6 sm:p-8 border border-[#E7DFD5] shadow-sm space-y-4">
+      {/* 2. Showroom Visiting Card & WhatsApp Group QR Codes */}
+      <div className="bg-white rounded-3xl p-6 sm:p-8 border border-[#E7DFD5] shadow-sm space-y-6">
         <div className="flex items-center gap-2 border-b border-stone-200 pb-2">
           <QrCode className="w-5 h-5 text-[#800020]" />
           <h3 className="font-serif text-base font-bold text-stone-900">
-            Showroom Visiting Card QR Code
+            Showroom QR Codes (WhatsApp Group & Visiting Card)
           </h3>
         </div>
 
-        <div className="flex flex-col md:flex-row items-center gap-6">
-          <div className="p-4 bg-white rounded-2xl border-2 border-dashed border-[#D4AF37] shadow-sm shrink-0">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={qrCodeUrl}
-              alt="Visiting Card QR Code"
-              className="w-36 h-36 rounded-lg object-contain"
-            />
-          </div>
-
-          <div className="space-y-3 text-xs text-stone-600">
-            <p className="leading-relaxed">
-              Print this QR code on your shop visiting cards, display stands, or fabric tags. When customers scan it with any smartphone camera, your public mobile-first saree catalog opens instantly.
-            </p>
-            <div className="p-2.5 bg-[#FAF7F2] rounded-xl border border-[#E7DFD5] font-mono text-[11px] text-stone-700 truncate">
-              Target URL: <strong>{liveShowroomUrl}</strong>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Card 1: WhatsApp Group QR */}
+          <div className="p-5 bg-[#FAF7F2] rounded-2xl border border-[#E7DFD5] space-y-4 flex flex-col justify-between">
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <MessageCircle className="w-4 h-4 text-[#25D366]" />
+                <h4 className="font-serif font-bold text-sm text-stone-900">
+                  1. WhatsApp Group QR Code
+                </h4>
+              </div>
+              <p className="text-xs text-stone-600 mb-3 leading-relaxed">
+                Customers scan using WhatsApp camera to join your customer updates & saree showcase community.
+              </p>
+              <div className="p-3 bg-white rounded-xl border border-stone-200 text-center max-w-[200px] mx-auto shadow-xs">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={whatsappQrUrl}
+                  alt="WhatsApp Group QR Code"
+                  className="w-full h-auto object-contain rounded-lg"
+                />
+              </div>
             </div>
 
-            <div className="flex items-center gap-3 pt-1">
-              <a
-                href={qrCodeUrl}
-                download="pochampally-visiting-card-qr.png"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="px-4 py-2 rounded-xl bg-[#FAF7F2] hover:bg-stone-200 text-[#800020] border border-[#E7DFD5] font-bold text-xs inline-flex items-center gap-1.5"
-              >
-                <Download className="w-3.5 h-3.5" />
-                <span>Download High-Res QR</span>
-              </a>
+            <div className="space-y-2">
+              <div className="p-2 bg-white rounded-lg border border-[#E7DFD5] font-mono text-[10px] text-stone-600 truncate">
+                {whatsappGroupUrl}
+              </div>
+              <div className="flex items-center gap-2">
+                <a
+                  href={whatsappQrUrl}
+                  download="sri-laxmi-narshima-whatsapp-group-qr.jpg"
+                  className="flex-1 py-2 px-3 rounded-xl bg-white hover:bg-stone-100 text-stone-800 border border-[#D6C7B2] font-bold text-xs inline-flex items-center justify-center gap-1.5"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Download</span>
+                </a>
+                <a
+                  href={whatsappGroupUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-1 py-2 px-3 rounded-xl bg-[#25D366] hover:bg-[#1EBE5D] text-white font-bold text-xs inline-flex items-center justify-center gap-1.5"
+                >
+                  <span>Open Link</span>
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </a>
+              </div>
+            </div>
+          </div>
 
-              <a
-                href={liveShowroomUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="px-4 py-2 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold text-xs inline-flex items-center gap-1.5"
-              >
-                <span>Open Showroom</span>
-                <ExternalLink className="w-3.5 h-3.5" />
-              </a>
+          {/* Card 2: Visiting Card Showroom QR */}
+          <div className="p-5 bg-[#FAF7F2] rounded-2xl border border-[#E7DFD5] space-y-4 flex flex-col justify-between">
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <QrCode className="w-4 h-4 text-[#800020]" />
+                <h4 className="font-serif font-bold text-sm text-stone-900">
+                  2. Visiting Card Back QR Code
+                </h4>
+              </div>
+              <p className="text-xs text-stone-600 mb-3 leading-relaxed">
+                Printed on the back of your shop visiting cards. Scans with any phone camera to open your live web showroom.
+              </p>
+              <div className="p-3 bg-white rounded-xl border border-stone-200 text-center max-w-[200px] mx-auto shadow-xs">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={qrCodeUrl}
+                  alt="Visiting Card QR Code"
+                  className="w-36 h-36 object-contain rounded-lg mx-auto"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <div className="p-2 bg-white rounded-lg border border-[#E7DFD5] font-mono text-[10px] text-[#800020] font-bold truncate">
+                {liveShowroomUrl}
+              </div>
+              <div className="flex items-center gap-2">
+                <a
+                  href={qrCodeUrl}
+                  download="visiting-card-back-qr.jpg"
+                  className="flex-1 py-2 px-3 rounded-xl bg-white hover:bg-stone-100 text-[#800020] border border-[#E7DFD5] font-bold text-xs inline-flex items-center justify-center gap-1.5"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Download</span>
+                </a>
+                <a
+                  href={liveShowroomUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-1 py-2 px-3 rounded-xl bg-[#800020] hover:bg-[#660019] text-white font-bold text-xs inline-flex items-center justify-center gap-1.5"
+                >
+                  <span>Open Site</span>
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </a>
+              </div>
             </div>
           </div>
         </div>

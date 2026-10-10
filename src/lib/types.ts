@@ -1,6 +1,41 @@
-// Types for Pochampally Silk Saree Platform
-// Supports both Album-based Photo Galleries and Optional Detailed Sarees
+// Professional Saree Business Website Types
+// Simple, scalable architecture: Collections contain Sarees directly
 
+export interface SareeItem {
+  id: string;
+  code: string;             // e.g. "PSS-001", "PS-024", "COT-012"
+  name: string;             // e.g. "Royal Peacock Blue Double Ikat Silk Saree"
+  image_url: string;
+  collection_id: string;    // ID of parent collection
+  collection_name?: string; // Display name of collection
+  price?: number | null;    // Optional price if shop owner chooses to display
+  show_price?: boolean;     // Toggle price visibility
+  description?: string;     // Optional description
+  order: number;
+  is_cover?: boolean;       // If this saree image is used as the collection cover
+  fabric?: string;
+  color?: string;
+  availability?: 'available' | 'sold_out' | 'made_to_order';
+  created_at: string;
+  updated_at?: string;
+}
+
+export interface Collection {
+  id: string;
+  name: string;             // e.g. "Pochampally Silk Sarees", "Pochampally Cotton Sarees"
+  slug: string;
+  description: string;
+  cover_image: string;      // One attractive cover image representing the collection
+  display_order: number;
+  status: 'active' | 'hidden';
+  sarees: SareeItem[];      // All individual sarees uploaded inside this collection
+  is_featured?: boolean;
+  section_id?: string;
+  created_at: string;
+  updated_at?: string;
+}
+
+// Backwards-compatibility aliases for existing subcomponents
 export interface PhotoDetails {
   saree_name?: string;
   price?: number | null;
@@ -23,7 +58,7 @@ export interface AlbumPhoto {
 
 export interface Album {
   id: string;
-  collection_id: string; // Foreign key to Collection (e.g. Cotton, Pure Silk, etc.)
+  collection_id: string;
   name: string;
   code?: string;
   description: string;
@@ -34,20 +69,6 @@ export interface Album {
   is_featured: boolean;
   created_at: string;
   updated_at: string;
-}
-
-export interface Collection {
-  id: string;
-  name: string; // e.g. "Cotton", "Sico", "Pure Silk", "Silk Mix", "Pochampally Ikat"
-  slug: string;
-  description: string;
-  cover_image: string;
-  display_order: number;
-  status: 'active' | 'hidden';
-  section_id?: string;
-  is_featured?: boolean;
-  created_at: string;
-  updated_at?: string;
 }
 
 export type AvailabilityStatus = 'available' | 'sold' | 'out_of_stock' | 'made_to_order' | 'hidden';
@@ -122,6 +143,8 @@ export interface ShopSettings {
   phone: string;
   alternate_phone?: string;
   whatsapp: string;
+  whatsapp_group_url?: string;
+  website_url?: string;
   email: string;
   opening_hours: string;
   timings?: string;
@@ -166,9 +189,11 @@ export interface Enquiry {
   id: string;
   customer_name: string;
   phone: string;
+  saree_code?: string;
+  collection_name?: string;
+  saree_name?: string;
   album_name?: string;
   photo_code?: string;
-  saree_name?: string;
   saree_sku?: string;
   message: string;
   created_at: string;
@@ -179,6 +204,7 @@ export interface AdminMetrics {
   totalCollections: number;
   totalAlbums: number;
   totalPhotos: number;
+  totalSarees: number;
   activeAlbums: number;
   featuredAlbums: number;
   totalEnquiries: number;

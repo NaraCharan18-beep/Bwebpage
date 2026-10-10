@@ -74,6 +74,7 @@ export default function AdminPage() {
     totalCollections: 0,
     totalAlbums: 0,
     totalPhotos: 0,
+    totalSarees: 0,
     activeAlbums: 0,
     featuredAlbums: 0,
     totalEnquiries: 0,
@@ -306,6 +307,7 @@ export default function AdminPage() {
               albums={albums}
               onSaveCollection={handleSaveCollection}
               onDeleteCollection={handleDeleteCollection}
+              onRefresh={loadAdminData}
               onNavigateToAlbums={(colId) => {
                 setFilterCollectionId(colId);
                 setCurrentTab('albums');

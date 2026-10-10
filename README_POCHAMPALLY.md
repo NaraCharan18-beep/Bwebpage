@@ -18,7 +18,7 @@ Designed specifically for customers scanning a QR code on the shop's visiting ca
 
 ### 2. Admin Dashboard (`/admin`)
 Private, secure showroom management interface built for non-technical shop owners:
-- **Authentication**: Protected route with PIN login (**Default PIN: `admin123`**).
+- **Authentication**: Protected route with PIN login (**Default PIN: `7579`**).
 - **Showroom Overview**: 8 real-time metric cards (Sections, Collections, Total Sarees, In-Stock, Sold Out, Featured, New Arrivals, Enquiries).
 - **Saree & Inventory Management**:
   - Full CRUD operations with instant search & filter
@@ -62,7 +62,7 @@ npm run dev
 
 # Open in browser:
 # Customer Showroom: http://localhost:3000
-# Admin Dashboard:   http://localhost:3000/admin (PIN: admin123)
+# Admin Dashboard:   http://localhost:3000/admin (PIN: 7579)
 
 # Build for production
 npm run build

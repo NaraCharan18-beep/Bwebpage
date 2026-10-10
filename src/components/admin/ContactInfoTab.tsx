@@ -113,7 +113,43 @@ export default function ContactInfoTab({
                 placeholder="919876543210 (with country code)"
               />
               <span className="text-[10px] text-stone-400 mt-1 block">
-                Digits only (e.g. 919876543210) for direct WhatsApp links
+                Digits only (e.g. 919849012345) for direct 1-on-1 customer chats
+              </span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-stone-700 mb-1 flex items-center gap-1.5">
+                <MessageCircle className="w-3.5 h-3.5 text-[#25D366]" />
+                <span>WhatsApp Group Invite Link (QR Code Target)</span>
+              </label>
+              <input
+                type="url"
+                value={form.whatsapp_group_url || ''}
+                onChange={(e) => setForm({ ...form, whatsapp_group_url: e.target.value })}
+                className="w-full px-3.5 py-2.5 rounded-xl bg-[#FAF7F2] border border-[#E7DFD5] text-xs text-stone-900 focus:outline-none focus:border-[#800020]"
+                placeholder="https://chat.whatsapp.com/J9afqXLrDfR7fhsHYffP9r"
+              />
+              <span className="text-[10px] text-stone-400 mt-1 block">
+                The link opened when customers tap/scan the WhatsApp QR code
+              </span>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-stone-700 mb-1 flex items-center gap-1.5">
+                <Globe className="w-3.5 h-3.5 text-[#800020]" />
+                <span>Showroom Website URL (Visiting Card QR Target)</span>
+              </label>
+              <input
+                type="url"
+                value={form.website_url || ''}
+                onChange={(e) => setForm({ ...form, website_url: e.target.value })}
+                className="w-full px-3.5 py-2.5 rounded-xl bg-[#FAF7F2] border border-[#E7DFD5] text-xs text-stone-900 focus:outline-none focus:border-[#800020]"
+                placeholder="https://bwebpage-szwt.vercel.app"
+              />
+              <span className="text-[10px] text-stone-400 mt-1 block">
+                The URL encoded on the back of your physical visiting card
               </span>
             </div>
           </div>

@@ -7,7 +7,8 @@ import {
   Album, 
   AlbumPhoto, 
   Enquiry, 
-  AdminMetrics 
+  AdminMetrics,
+  SareeItem
 } from './types';
 import { 
   initialShopSettings, 
@@ -20,13 +21,13 @@ import {
 import { getSupabaseClient, isSupabaseConfigured } from './supabase';
 
 const STORAGE_KEYS = {
-  SETTINGS: 'pochampally_settings_v4',
-  HOMEPAGE: 'pochampally_homepage_v4',
-  ABOUT: 'pochampally_about_v4',
-  STEPS: 'pochampally_steps_v4',
-  COLLECTIONS: 'pochampally_collections_v4',
-  ALBUMS: 'pochampally_albums_v4',
-  ENQUIRIES: 'pochampally_enquiries_v4',
+  SETTINGS: 'pochampally_settings_v5',
+  HOMEPAGE: 'pochampally_homepage_v5',
+  ABOUT: 'pochampally_about_v5',
+  STEPS: 'pochampally_steps_v5',
+  COLLECTIONS: 'pochampally_collections_v5',
+  ALBUMS: 'pochampally_albums_v5',
+  ENQUIRIES: 'pochampally_enquiries_v5',
 };
 
 // Memory cache
@@ -74,29 +75,46 @@ function setToStorage<T>(key: string, value: T): void {
 }
 
 export function initLocalStore() {
-  if (typeof window === 'undefined' || cachedData.initialized) return;
-  cachedData.settings = getFromStorage(STORAGE_KEYS.SETTINGS, initialShopSettings);
-  if (cachedData.settings.shop_name.includes('Charan')) {
-    cachedData.settings = { ...cachedData.settings, shop_name: 'SRI LAXMI NARSHIMA SARES HOUSE' };
-    setToStorage(STORAGE_KEYS.SETTINGS, cachedData.settings);
-  }
-  cachedData.homepage = getFromStorage(STORAGE_KEYS.HOMEPAGE, initialHomepageContent);
-  cachedData.about = getFromStorage(STORAGE_KEYS.ABOUT, initialAboutContent);
-  cachedData.steps = getFromStorage(STORAGE_KEYS.STEPS, initialProcessSteps);
-  cachedData.collections = getFromStorage(STORAGE_KEYS.COLLECTIONS, initialCollections);
-  cachedData.albums = getFromStorage(STORAGE_KEYS.ALBUMS, initialAlbums);
-  
-  // Strip any price tags from all albums
-  cachedData.albums = cachedData.albums.map((alb) => ({
-    ...alb,
-    photos: alb.photos.map((p) => ({
-      ...p,
-      details: p.details ? { ...p.details, price: null } : undefined,
-    })),
-  }));
+  if (typeof window !== 'undefined' && !cachedData.initialized) {
+    cachedData.settings = getFromStorage(STORAGE_KEYS.SETTINGS, initialShopSettings);
+    if (!cachedData.settings.shop_name || cachedData.settings.shop_name.includes('Charan')) {
+      cachedData.settings = { ...cachedData.settings, shop_name: 'SRI LAXMI NARSHIMA SARES HOUSE' };
+      setToStorage(STORAGE_KEYS.SETTINGS, cachedData.settings);
+    }
+    if (!cachedData.settings.admin_pin || cachedData.settings.admin_pin === 'admin123') {
+      cachedData.settings = { ...cachedData.settings, admin_pin: '7579' };
+      setToStorage(STORAGE_KEYS.SETTINGS, cachedData.settings);
+    }
+    if (!cachedData.settings.whatsapp_group_url) {
+      cachedData.settings = { ...cachedData.settings, whatsapp_group_url: 'https://chat.whatsapp.com/J9afqXLrDfR7fhsHYffP9r' };
+      setToStorage(STORAGE_KEYS.SETTINGS, cachedData.settings);
+    }
+    if (!cachedData.settings.website_url) {
+      cachedData.settings = { ...cachedData.settings, website_url: 'https://bwebpage-szwt.vercel.app' };
+      setToStorage(STORAGE_KEYS.SETTINGS, cachedData.settings);
+    }
 
-  cachedData.enquiries = getFromStorage(STORAGE_KEYS.ENQUIRIES, []);
-  cachedData.initialized = true;
+    cachedData.homepage = getFromStorage(STORAGE_KEYS.HOMEPAGE, initialHomepageContent);
+    cachedData.about = getFromStorage(STORAGE_KEYS.ABOUT, initialAboutContent);
+    cachedData.steps = getFromStorage(STORAGE_KEYS.STEPS, initialProcessSteps);
+    
+    // Load collections
+    const storedCols = getFromStorage<Collection[]>(STORAGE_KEYS.COLLECTIONS, initialCollections);
+    // Ensure every collection has a valid sarees array
+    cachedData.collections = storedCols.map(col => {
+      const matchInitial = initialCollections.find(ic => ic.id === col.id);
+      return {
+        ...col,
+        sarees: Array.isArray(col.sarees) && col.sarees.length > 0 
+          ? col.sarees 
+          : (matchInitial?.sarees || []),
+      };
+    });
+
+    cachedData.albums = getFromStorage(STORAGE_KEYS.ALBUMS, initialAlbums);
+    cachedData.enquiries = getFromStorage(STORAGE_KEYS.ENQUIRIES, []);
+    cachedData.initialized = true;
+  }
 }
 
 // ==========================================
@@ -116,8 +134,13 @@ export async function getShopSettings(): Promise<ShopSettings> {
   return cachedData.settings;
 }
 
-export async function updateShopSettings(settings: ShopSettings): Promise<void> {
-  cachedData.settings = { ...settings, updated_at: new Date().toISOString() };
+export async function updateShopSettings(newSettings: Partial<ShopSettings>): Promise<ShopSettings> {
+  initLocalStore();
+  cachedData.settings = {
+    ...cachedData.settings,
+    ...newSettings,
+    updated_at: new Date().toISOString(),
+  };
   setToStorage(STORAGE_KEYS.SETTINGS, cachedData.settings);
 
   const client = getSupabaseClient();
@@ -125,9 +148,10 @@ export async function updateShopSettings(settings: ShopSettings): Promise<void> 
     try {
       await client.from('shop_settings').upsert(cachedData.settings);
     } catch (e) {
-      console.error('Supabase upsert settings failed:', e);
+      console.error('Supabase update settings failed:', e);
     }
   }
+  return cachedData.settings;
 }
 
 // ==========================================
@@ -147,8 +171,13 @@ export async function getHomepageContent(): Promise<HomepageContent> {
   return cachedData.homepage;
 }
 
-export async function updateHomepageContent(content: HomepageContent): Promise<void> {
-  cachedData.homepage = { ...content, updated_at: new Date().toISOString() };
+export async function updateHomepageContent(content: Partial<HomepageContent>): Promise<HomepageContent> {
+  initLocalStore();
+  cachedData.homepage = {
+    ...cachedData.homepage,
+    ...content,
+    updated_at: new Date().toISOString(),
+  };
   setToStorage(STORAGE_KEYS.HOMEPAGE, cachedData.homepage);
 
   const client = getSupabaseClient();
@@ -156,9 +185,10 @@ export async function updateHomepageContent(content: HomepageContent): Promise<v
     try {
       await client.from('homepage_content').upsert(cachedData.homepage);
     } catch (e) {
-      console.error('Supabase upsert homepage failed:', e);
+      console.error('Supabase update homepage failed:', e);
     }
   }
+  return cachedData.homepage;
 }
 
 // ==========================================
@@ -178,8 +208,13 @@ export async function getAboutContent(): Promise<AboutContent> {
   return cachedData.about;
 }
 
-export async function updateAboutContent(about: AboutContent): Promise<void> {
-  cachedData.about = { ...about, updated_at: new Date().toISOString() };
+export async function updateAboutContent(content: Partial<AboutContent>): Promise<AboutContent> {
+  initLocalStore();
+  cachedData.about = {
+    ...cachedData.about,
+    ...content,
+    updated_at: new Date().toISOString(),
+  };
   setToStorage(STORAGE_KEYS.ABOUT, cachedData.about);
 
   const client = getSupabaseClient();
@@ -187,13 +222,14 @@ export async function updateAboutContent(about: AboutContent): Promise<void> {
     try {
       await client.from('about_content').upsert(cachedData.about);
     } catch (e) {
-      console.error('Supabase upsert about failed:', e);
+      console.error('Supabase update about failed:', e);
     }
   }
+  return cachedData.about;
 }
 
 // ==========================================
-// 4. PROCESS STEPS
+// 4. PROCESS STEPS (Storytelling)
 // ==========================================
 export async function getProcessSteps(): Promise<ProcessStep[]> {
   initLocalStore();
@@ -206,7 +242,7 @@ export async function getProcessSteps(): Promise<ProcessStep[]> {
       console.warn('Supabase fetch steps failed, using local store:', e);
     }
   }
-  return [...cachedData.steps].sort((a, b) => a.display_order - b.display_order);
+  return cachedData.steps.sort((a, b) => a.display_order - b.display_order);
 }
 
 export async function saveProcessStep(step: ProcessStep): Promise<void> {
@@ -245,7 +281,7 @@ export async function deleteProcessStep(id: string): Promise<void> {
 }
 
 // ==========================================
-// 5. COLLECTIONS (Cloth/Fabric Types: Cotton, Sico, Pure Silk, etc.)
+// 5. UNIFIED COLLECTIONS & SAREES
 // ==========================================
 export async function getCollections(onlyActive = false): Promise<Collection[]> {
   initLocalStore();
@@ -260,23 +296,37 @@ export async function getCollections(onlyActive = false): Promise<Collection[]> 
       console.warn('Supabase fetch collections failed, using local store:', e);
     }
   }
-  let cols = [...cachedData.collections];
+
+  let results = [...cachedData.collections];
   if (onlyActive) {
-    cols = cols.filter(c => c.status === 'active');
+    results = results.filter(c => c.status === 'active');
   }
-  return cols.sort((a, b) => a.display_order - b.display_order);
+  return results.sort((a, b) => a.display_order - b.display_order);
+}
+
+export async function getCollectionById(id: string): Promise<Collection | null> {
+  initLocalStore();
+  return cachedData.collections.find(c => c.id === id) || null;
 }
 
 export async function saveCollection(collection: Collection): Promise<void> {
   initLocalStore();
   const index = cachedData.collections.findIndex(c => c.id === collection.id);
-  const updated = { ...collection, updated_at: new Date().toISOString() };
+  const updated: Collection = {
+    ...collection,
+    sarees: collection.sarees || [],
+    updated_at: new Date().toISOString(),
+  };
+
   if (index >= 0) {
     cachedData.collections[index] = updated;
   } else {
     cachedData.collections.push(updated);
   }
   setToStorage(STORAGE_KEYS.COLLECTIONS, cachedData.collections);
+
+  // Sync to albums for backward compatibility
+  syncCollectionToAlbum(updated);
 
   const client = getSupabaseClient();
   if (client && isSupabaseConfigured()) {
@@ -291,8 +341,8 @@ export async function saveCollection(collection: Collection): Promise<void> {
 export async function deleteCollection(id: string): Promise<{ success: boolean; message?: string }> {
   initLocalStore();
   cachedData.collections = cachedData.collections.filter(c => c.id !== id);
-  cachedData.albums = cachedData.albums.filter(a => a.collection_id !== id);
-
+  cachedData.albums = cachedData.albums.filter(a => a.collection_id !== id && a.id !== `alb-${id}`);
+  
   setToStorage(STORAGE_KEYS.COLLECTIONS, cachedData.collections);
   setToStorage(STORAGE_KEYS.ALBUMS, cachedData.albums);
 
@@ -307,8 +357,199 @@ export async function deleteCollection(id: string): Promise<{ success: boolean; 
   return { success: true };
 }
 
+// Bulk Add Sarees to Collection
+export async function addSareesToCollection(
+  collectionId: string,
+  newSarees: Partial<SareeItem>[]
+): Promise<Collection | null> {
+  initLocalStore();
+  const colIndex = cachedData.collections.findIndex(c => c.id === collectionId);
+  if (colIndex === -1) return null;
+
+  const col = cachedData.collections[colIndex];
+  const existingSarees = col.sarees || [];
+  
+  const createdSarees: SareeItem[] = newSarees.map((s, idx) => ({
+    id: s.id || `saree-${Date.now()}-${idx}-${Math.random().toString(36).substring(2, 6)}`,
+    code: s.code || `S-${col.sarees.length + idx + 1}`,
+    name: s.name || `Saree ${col.sarees.length + idx + 1}`,
+    image_url: s.image_url || '/images/hero_saree.jpg',
+    collection_id: collectionId,
+    collection_name: col.name,
+    fabric: s.fabric || '',
+    color: s.color || '',
+    description: s.description || '',
+    price: s.price ?? null,
+    show_price: s.show_price ?? false,
+    order: existingSarees.length + idx + 1,
+    is_cover: existingSarees.length === 0 && idx === 0,
+    availability: s.availability || 'available',
+    created_at: new Date().toISOString(),
+  }));
+
+  const updatedSarees = [...existingSarees, ...createdSarees];
+  const updatedCol: Collection = {
+    ...col,
+    cover_image: col.cover_image || createdSarees[0]?.image_url || '/images/hero_saree.jpg',
+    sarees: updatedSarees,
+    updated_at: new Date().toISOString(),
+  };
+
+  cachedData.collections[colIndex] = updatedCol;
+  setToStorage(STORAGE_KEYS.COLLECTIONS, cachedData.collections);
+  syncCollectionToAlbum(updatedCol);
+
+  return updatedCol;
+}
+
+// Update Single Saree inside Collection
+export async function updateSaree(collectionId: string, updatedSaree: SareeItem): Promise<void> {
+  initLocalStore();
+  const colIndex = cachedData.collections.findIndex(c => c.id === collectionId);
+  if (colIndex === -1) return;
+
+  const col = cachedData.collections[colIndex];
+  const sareeIndex = col.sarees.findIndex(s => s.id === updatedSaree.id);
+  if (sareeIndex === -1) return;
+
+  col.sarees[sareeIndex] = { ...updatedSaree, updated_at: new Date().toISOString() };
+  if (updatedSaree.is_cover) {
+    col.cover_image = updatedSaree.image_url;
+    col.sarees.forEach(s => {
+      s.is_cover = s.id === updatedSaree.id;
+    });
+  }
+
+  col.updated_at = new Date().toISOString();
+  cachedData.collections[colIndex] = col;
+  setToStorage(STORAGE_KEYS.COLLECTIONS, cachedData.collections);
+  syncCollectionToAlbum(col);
+}
+
+// Delete Single Saree
+export async function deleteSaree(collectionId: string, sareeId: string): Promise<void> {
+  initLocalStore();
+  const colIndex = cachedData.collections.findIndex(c => c.id === collectionId);
+  if (colIndex === -1) return;
+
+  const col = cachedData.collections[colIndex];
+  col.sarees = col.sarees.filter(s => s.id !== sareeId);
+  if (col.sarees.length > 0 && !col.sarees.some(s => s.is_cover)) {
+    col.sarees[0].is_cover = true;
+    col.cover_image = col.sarees[0].image_url;
+  }
+  col.updated_at = new Date().toISOString();
+  cachedData.collections[colIndex] = col;
+  setToStorage(STORAGE_KEYS.COLLECTIONS, cachedData.collections);
+  syncCollectionToAlbum(col);
+}
+
+// Move Saree to another Collection
+export async function moveSareeToCollection(
+  sareeId: string,
+  fromCollectionId: string,
+  toCollectionId: string
+): Promise<boolean> {
+  initLocalStore();
+  if (fromCollectionId === toCollectionId) return true;
+
+  const fromCol = cachedData.collections.find(c => c.id === fromCollectionId);
+  const toCol = cachedData.collections.find(c => c.id === toCollectionId);
+  if (!fromCol || !toCol) return false;
+
+  const sareeIndex = fromCol.sarees.findIndex(s => s.id === sareeId);
+  if (sareeIndex === -1) return false;
+
+  const [saree] = fromCol.sarees.splice(sareeIndex, 1);
+  saree.collection_id = toCollectionId;
+  saree.collection_name = toCol.name;
+  saree.order = toCol.sarees.length + 1;
+  saree.is_cover = toCol.sarees.length === 0;
+
+  toCol.sarees.push(saree);
+  if (saree.is_cover) {
+    toCol.cover_image = saree.image_url;
+  }
+
+  setToStorage(STORAGE_KEYS.COLLECTIONS, cachedData.collections);
+  syncCollectionToAlbum(fromCol);
+  syncCollectionToAlbum(toCol);
+  return true;
+}
+
+// Set Cover Image for Collection
+export async function setCollectionCover(collectionId: string, imageUrl: string): Promise<void> {
+  initLocalStore();
+  const colIndex = cachedData.collections.findIndex(c => c.id === collectionId);
+  if (colIndex === -1) return;
+
+  const col = cachedData.collections[colIndex];
+  col.cover_image = imageUrl;
+  col.sarees.forEach(s => {
+    s.is_cover = s.image_url === imageUrl;
+  });
+  col.updated_at = new Date().toISOString();
+  cachedData.collections[colIndex] = col;
+  setToStorage(STORAGE_KEYS.COLLECTIONS, cachedData.collections);
+  syncCollectionToAlbum(col);
+}
+
+// Reorder Collections
+export async function reorderCollections(orderedIds: string[]): Promise<void> {
+  initLocalStore();
+  cachedData.collections.forEach(col => {
+    const idx = orderedIds.indexOf(col.id);
+    if (idx >= 0) {
+      col.display_order = idx + 1;
+    }
+  });
+  cachedData.collections.sort((a, b) => a.display_order - b.display_order);
+  setToStorage(STORAGE_KEYS.COLLECTIONS, cachedData.collections);
+}
+
+// Helper to keep albums in sync for backwards-compatibility
+function syncCollectionToAlbum(col: Collection) {
+  const albIndex = cachedData.albums.findIndex(a => a.id === `alb-${col.id}` || a.collection_id === col.id);
+  const syncedAlbum: Album = {
+    id: `alb-${col.id}`,
+    collection_id: col.id,
+    name: col.name,
+    code: col.slug.toUpperCase().slice(0, 8),
+    description: col.description,
+    cover_image: col.cover_image,
+    display_order: col.display_order,
+    status: col.status,
+    is_featured: Boolean(col.is_featured),
+    created_at: col.created_at,
+    updated_at: new Date().toISOString(),
+    photos: col.sarees.map((s, idx) => ({
+      id: s.id,
+      url: s.image_url,
+      is_cover: Boolean(s.is_cover),
+      order: s.order || idx + 1,
+      caption: s.name,
+      details: {
+        saree_name: s.name,
+        code: s.code,
+        price: s.price,
+        description: s.description,
+        color: s.color,
+        fabric: s.fabric,
+        availability: s.availability,
+      },
+    })),
+  };
+
+  if (albIndex >= 0) {
+    cachedData.albums[albIndex] = syncedAlbum;
+  } else {
+    cachedData.albums.push(syncedAlbum);
+  }
+  setToStorage(STORAGE_KEYS.ALBUMS, cachedData.albums);
+}
+
 // ==========================================
-// 6. PHOTO ALBUMS (Multiple photos per album)
+// 6. PHOTO ALBUMS (Compatibility Layer)
 // ==========================================
 export async function getAlbums(options?: {
   collectionId?: string;
@@ -316,26 +557,6 @@ export async function getAlbums(options?: {
   featuredOnly?: boolean;
 }): Promise<Album[]> {
   initLocalStore();
-  const client = getSupabaseClient();
-  if (client && isSupabaseConfigured()) {
-    try {
-      let query = client.from('albums').select('*').order('display_order', { ascending: true });
-      if (options?.collectionId && options.collectionId !== 'all') {
-        query = query.eq('collection_id', options.collectionId);
-      }
-      if (options?.onlyActive) {
-        query = query.eq('status', 'active');
-      }
-      if (options?.featuredOnly) {
-        query = query.eq('is_featured', true);
-      }
-      const { data, error } = await query;
-      if (!error && data && data.length > 0) return data;
-    } catch (e) {
-      console.warn('Supabase fetch albums failed, using local store:', e);
-    }
-  }
-
   let results = [...cachedData.albums];
   if (options?.collectionId && options.collectionId !== 'all') {
     results = results.filter(a => a.collection_id === options.collectionId);
@@ -346,21 +567,11 @@ export async function getAlbums(options?: {
   if (options?.featuredOnly) {
     results = results.filter(a => a.is_featured);
   }
-
   return results.sort((a, b) => a.display_order - b.display_order);
 }
 
 export async function getAlbumById(id: string): Promise<Album | null> {
   initLocalStore();
-  const client = getSupabaseClient();
-  if (client && isSupabaseConfigured()) {
-    try {
-      const { data, error } = await client.from('albums').select('*').eq('id', id).single();
-      if (!error && data) return data;
-    } catch (e) {
-      console.warn('Supabase fetch album by id failed, using local store:', e);
-    }
-  }
   return cachedData.albums.find(a => a.id === id) || null;
 }
 
@@ -374,30 +585,26 @@ export async function saveAlbum(album: Album): Promise<void> {
     cachedData.albums.unshift(updated);
   }
   setToStorage(STORAGE_KEYS.ALBUMS, cachedData.albums);
-
-  const client = getSupabaseClient();
-  if (client && isSupabaseConfigured()) {
-    try {
-      await client.from('albums').upsert(updated);
-    } catch (e) {
-      console.error('Supabase upsert album failed:', e);
-    }
-  }
 }
 
 export async function deleteAlbum(id: string): Promise<void> {
   initLocalStore();
   cachedData.albums = cachedData.albums.filter(a => a.id !== id);
   setToStorage(STORAGE_KEYS.ALBUMS, cachedData.albums);
+}
 
-  const client = getSupabaseClient();
-  if (client && isSupabaseConfigured()) {
-    try {
-      await client.from('albums').delete().eq('id', id);
-    } catch (e) {
-      console.error('Supabase delete album failed:', e);
-    }
+// Safety check for deleting collection
+export function checkDeleteSafety(collectionId: string): { canDelete: boolean; message?: string } {
+  initLocalStore();
+  const col = cachedData.collections.find(c => c.id === collectionId);
+  if (!col) return { canDelete: true };
+  if (col.sarees && col.sarees.length > 0) {
+    return {
+      canDelete: true,
+      message: `This collection contains ${col.sarees.length} saree items. Deleting it will also remove these items from the collection.`
+    };
   }
+  return { canDelete: true };
 }
 
 // ==========================================
@@ -419,10 +626,9 @@ export async function submitEnquiry(enquiry: Omit<Enquiry, 'id' | 'created_at' |
     try {
       await client.from('enquiries').insert(newEnquiry);
     } catch (e) {
-      console.error('Supabase enquiry submit failed:', e);
+      console.error('Supabase submit enquiry failed:', e);
     }
   }
-
   return newEnquiry;
 }
 
@@ -440,68 +646,80 @@ export async function getEnquiries(): Promise<Enquiry[]> {
   return cachedData.enquiries;
 }
 
+export async function updateEnquiryStatus(id: string, status: Enquiry['status']): Promise<void> {
+  initLocalStore();
+  const index = cachedData.enquiries.findIndex(e => e.id === id);
+  if (index >= 0) {
+    cachedData.enquiries[index].status = status;
+    setToStorage(STORAGE_KEYS.ENQUIRIES, cachedData.enquiries);
+  }
+
+  const client = getSupabaseClient();
+  if (client && isSupabaseConfigured()) {
+    try {
+      await client.from('enquiries').update({ status }).eq('id', id);
+    } catch (e) {
+      console.error('Supabase update enquiry status failed:', e);
+    }
+  }
+}
+
 // ==========================================
-// 8. METRICS & DELETE SAFETY
+// 8. ADMIN METRICS
 // ==========================================
 export async function getAdminMetrics(): Promise<AdminMetrics> {
   initLocalStore();
-  const collections = await getCollections();
-  const albums = await getAlbums();
-  const enquiries = await getEnquiries();
+  const totalCollections = cachedData.collections.length;
+  let totalSarees = 0;
+  cachedData.collections.forEach(c => {
+    totalSarees += c.sarees?.length || 0;
+  });
 
-  const totalPhotos = albums.reduce((acc, alb) => acc + (alb.photos?.length || 0), 0);
+  const totalAlbums = cachedData.albums.length;
+  let totalPhotos = 0;
+  let activeAlbums = 0;
+  let featuredAlbums = 0;
+
+  cachedData.albums.forEach(alb => {
+    totalPhotos += alb.photos?.length || 0;
+    if (alb.status === 'active') activeAlbums++;
+    if (alb.is_featured) featuredAlbums++;
+  });
+
+  const totalEnquiries = cachedData.enquiries.length;
 
   return {
-    totalCollections: collections.length,
-    totalAlbums: albums.length,
+    totalCollections,
+    totalAlbums,
     totalPhotos,
-    activeAlbums: albums.filter(a => a.status === 'active').length,
-    featuredAlbums: albums.filter(a => a.is_featured).length,
-    totalEnquiries: enquiries.length,
+    totalSarees,
+    activeAlbums,
+    featuredAlbums,
+    totalEnquiries,
   };
 }
 
-export function checkDeleteSafety(type: 'collection' | 'album', id: string): {
-  canDelete: boolean;
-  warningMessage?: string;
-  associatedCount: number;
-} {
-  initLocalStore();
-  if (type === 'collection') {
-    const albList = cachedData.albums.filter(a => a.collection_id === id);
-    const photoCount = albList.reduce((acc, a) => acc + (a.photos?.length || 0), 0);
-    if (albList.length > 0) {
-      return {
-        canDelete: true,
-        associatedCount: albList.length,
-        warningMessage: `This collection contains ${albList.length} album(s) with ${photoCount} total saree photographs. Deleting it will also remove all its albums and photos.`,
-      };
-    }
-  } else if (type === 'album') {
-    const alb = cachedData.albums.find(a => a.id === id);
-    const photoCount = alb?.photos?.length || 0;
-    if (photoCount > 0) {
-      return {
-        canDelete: true,
-        associatedCount: photoCount,
-        warningMessage: `This album currently contains ${photoCount} saree photograph(s). Deleting it will remove all photos in this album.`,
-      };
-    }
+// ==========================================
+// 9. RESET DATA TO DEFAULTS
+// ==========================================
+export async function resetDataToDefaults(): Promise<void> {
+  if (typeof window !== 'undefined') {
+    localStorage.removeItem(STORAGE_KEYS.SETTINGS);
+    localStorage.removeItem(STORAGE_KEYS.HOMEPAGE);
+    localStorage.removeItem(STORAGE_KEYS.ABOUT);
+    localStorage.removeItem(STORAGE_KEYS.STEPS);
+    localStorage.removeItem(STORAGE_KEYS.COLLECTIONS);
+    localStorage.removeItem(STORAGE_KEYS.ALBUMS);
+    localStorage.removeItem(STORAGE_KEYS.ENQUIRIES);
   }
-  return { canDelete: true, associatedCount: 0 };
-}
-
-// Reset data to defaults
-export function resetDataToDefaults() {
-  if (typeof window === 'undefined') return;
-  localStorage.removeItem(STORAGE_KEYS.SETTINGS);
-  localStorage.removeItem(STORAGE_KEYS.HOMEPAGE);
-  localStorage.removeItem(STORAGE_KEYS.ABOUT);
-  localStorage.removeItem(STORAGE_KEYS.STEPS);
-  localStorage.removeItem(STORAGE_KEYS.COLLECTIONS);
-  localStorage.removeItem(STORAGE_KEYS.ALBUMS);
-  localStorage.removeItem(STORAGE_KEYS.ENQUIRIES);
-  cachedData.initialized = false;
-  initLocalStore();
+  cachedData.settings = initialShopSettings;
+  cachedData.homepage = initialHomepageContent;
+  cachedData.about = initialAboutContent;
+  cachedData.steps = initialProcessSteps;
+  cachedData.collections = initialCollections;
+  cachedData.albums = initialAlbums;
+  cachedData.enquiries = [];
+  cachedData.initialized = true;
   notifyDataChanged();
 }
+

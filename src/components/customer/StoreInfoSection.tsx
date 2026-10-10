@@ -1,14 +1,15 @@
 'use client';
 
 import React from 'react';
-import { MapPin, Phone, MessageCircle, Clock, Navigation, ExternalLink } from 'lucide-react';
+import { MapPin, Phone, MessageCircle, Clock, Navigation, ExternalLink, QrCode } from 'lucide-react';
 import { ShopSettings } from '@/lib/types';
 
 interface StoreInfoSectionProps {
   settings: ShopSettings;
+  onOpenQr?: () => void;
 }
 
-export default function StoreInfoSection({ settings }: StoreInfoSectionProps) {
+export default function StoreInfoSection({ settings, onOpenQr }: StoreInfoSectionProps) {
   return (
     <section id="store" className="py-16 md:py-24 bg-[#F4ECE1]/40 border-b border-[#E7DFD5] relative">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -31,7 +32,7 @@ export default function StoreInfoSection({ settings }: StoreInfoSectionProps) {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
           
           {/* Left Column: Store Details */}
-          <div className="lg:col-span-5 space-y-5 flex flex-col justify-between">
+          <div className="lg:col-span-5 space-y-4 flex flex-col justify-between">
             <div className="bg-white rounded-3xl p-6 sm:p-8 border border-[#E7DFD5] shadow-md space-y-6">
               
               {/* Store Title */}
@@ -108,12 +109,24 @@ export default function StoreInfoSection({ settings }: StoreInfoSectionProps) {
               href={settings.google_maps_url}
               target="_blank"
               rel="noopener noreferrer"
-              className="w-full py-4 px-6 rounded-2xl bg-[#800020] hover:bg-[#660019] text-white font-bold text-sm shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2.5 group"
+              className="w-full py-3.5 px-6 rounded-2xl bg-[#800020] hover:bg-[#660019] text-white font-bold text-sm shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2.5 group"
             >
               <Navigation className="w-4 h-4 text-[#D4AF37] group-hover:scale-110 transition-transform" />
               <span>Get Google Maps Directions</span>
               <ExternalLink className="w-4 h-4 opacity-75" />
             </a>
+
+            {/* Preserved QR Code Action */}
+            {onOpenQr && (
+              <button
+                type="button"
+                onClick={onOpenQr}
+                className="w-full py-3 px-4 rounded-2xl bg-white border border-[#D4AF37] hover:bg-[#FAF7F2] text-[#800020] font-bold text-xs shadow-xs transition-colors flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <QrCode className="w-4 h-4 text-[#D4AF37]" />
+                <span>Show Visiting Card & WhatsApp QR Codes</span>
+              </button>
+            )}
           </div>
 
           {/* Right Column: Google Maps Interactive Embed Frame */}

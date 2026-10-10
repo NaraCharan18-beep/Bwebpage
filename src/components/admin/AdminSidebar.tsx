@@ -9,27 +9,26 @@ import {
   BookOpen,
   ListOrdered,
   FolderTree, 
-  Images, 
-  Tag,
-  Phone,
-  Settings,
-  Inbox,
-  ExternalLink 
+  Phone, 
+  Settings, 
+  Inbox, 
+  ExternalLink,
+  Plus
 } from 'lucide-react';
 import { ShopSettings } from '@/lib/types';
 
 export type AdminTab = 
   | 'dashboard'
+  | 'collections'
   | 'shop'
   | 'homepage'
   | 'about'
   | 'steps'
-  | 'collections'
-  | 'albums'
-  | 'saree-details'
   | 'contact'
   | 'settings'
-  | 'enquiries';
+  | 'enquiries'
+  | 'albums'
+  | 'saree-details';
 
 interface AdminSidebarProps {
   currentTab: AdminTab;
@@ -49,7 +48,6 @@ export default function AdminSidebar({
   settings,
   onLogout,
   collectionCount,
-  albumCount,
   enquiryCount,
   isOpenMobile,
   onCloseMobile,
@@ -62,16 +60,20 @@ export default function AdminSidebar({
     section?: string;
   }[] = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'shop', label: 'Shop Information', icon: Store, section: 'Storefront Content' },
-    { id: 'homepage', label: 'Homepage', icon: Sparkles },
+    { 
+      id: 'collections', 
+      label: 'Collections & Sarees', 
+      icon: FolderTree, 
+      badge: collectionCount, 
+      section: 'Saree Catalog' 
+    },
+    { id: 'enquiries', label: 'Customer Enquiries', icon: Inbox, badge: enquiryCount > 0 ? enquiryCount : undefined },
+    { id: 'shop', label: 'Shop Information', icon: Store, section: 'Website Content' },
+    { id: 'homepage', label: 'Homepage Banner', icon: Sparkles },
     { id: 'about', label: 'About Pochampally', icon: BookOpen },
     { id: 'steps', label: 'How Sarees Are Made', icon: ListOrdered },
-    { id: 'collections', label: 'Collections', icon: FolderTree, badge: collectionCount, section: 'Saree Catalog & Albums' },
-    { id: 'albums', label: 'Albums', icon: Images, badge: albumCount },
-    { id: 'saree-details', label: 'Optional Saree Details', icon: Tag },
-    { id: 'contact', label: 'Contact Information', icon: Phone, section: 'Management & Tools' },
-    { id: 'settings', label: 'Settings', icon: Settings },
-    { id: 'enquiries', label: 'Customer Enquiries', icon: Inbox, badge: enquiryCount > 0 ? enquiryCount : undefined },
+    { id: 'contact', label: 'Contact Information', icon: Phone, section: 'Settings' },
+    { id: 'settings', label: 'Security & PIN', icon: Settings },
   ];
 
   return (
@@ -101,17 +103,35 @@ export default function AdminSidebar({
                 {settings.shop_name}
               </span>
               <span className="block text-[11px] text-[#A67C1E] uppercase tracking-wider font-semibold">
-                Admin Dashboard
+                Shop Admin Area
               </span>
             </div>
           </div>
+        </div>
+
+        {/* Quick Action: + Create Collection Button */}
+        <div className="px-4 pt-3 pb-1">
+          <button
+            onClick={() => {
+              onTabChange('collections');
+              onCloseMobile();
+              // trigger create collection modal if possible
+              if (typeof window !== 'undefined') {
+                window.dispatchEvent(new Event('open-create-collection-modal'));
+              }
+            }}
+            className="w-full py-2.5 px-3 rounded-xl bg-[#800020] hover:bg-[#660019] text-white text-xs font-bold shadow-md flex items-center justify-center gap-2 transition-all hover:scale-[1.02]"
+          >
+            <Plus className="w-4 h-4 text-[#D4AF37]" />
+            <span>+ Create Collection</span>
+          </button>
         </div>
 
         {/* Navigation Items */}
         <nav className="flex-1 overflow-y-auto p-4 space-y-1 scrollbar-none">
           {menuItems.map((item, idx) => {
             const Icon = item.icon;
-            const isActive = currentTab === item.id;
+            const isActive = currentTab === item.id || (item.id === 'collections' && (currentTab === 'albums' || currentTab === 'saree-details'));
 
             return (
               <React.Fragment key={item.id}>
@@ -126,7 +146,7 @@ export default function AdminSidebar({
                     onTabChange(item.id);
                     onCloseMobile();
                   }}
-                  className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all ${
+                  className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
                     isActive
                       ? 'bg-[#800020] text-white shadow-md'
                       : 'text-stone-300 hover:bg-stone-800 hover:text-white'
@@ -160,13 +180,13 @@ export default function AdminSidebar({
             target="_blank"
             className="w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-stone-800/80 hover:bg-stone-800 text-xs font-semibold text-[#D4AF37] border border-stone-700/60 transition-colors"
           >
-            <span>View Public Website</span>
+            <span>View Customer Website</span>
             <ExternalLink className="w-3.5 h-3.5" />
           </Link>
 
           <button
             onClick={onLogout}
-            className="w-full py-2 px-3 rounded-xl text-xs font-semibold text-stone-400 hover:text-rose-400 hover:bg-stone-900 transition-colors text-center"
+            className="w-full py-2 px-3 rounded-xl text-xs font-semibold text-stone-400 hover:text-rose-400 hover:bg-stone-900 transition-colors text-center cursor-pointer"
           >
             Sign Out
           </button>

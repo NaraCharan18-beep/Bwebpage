@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { Lock, ArrowRight, ShieldCheck, KeyRound, Sparkles, Home } from 'lucide-react';
+import { Lock, ArrowRight, KeyRound, Home } from 'lucide-react';
 import { ShopSettings } from '@/lib/types';
 import { initialShopSettings } from '@/lib/seed-data';
 
@@ -21,15 +21,35 @@ export default function AdminLogin({ settings = initialShopSettings, onLoginSucc
     setError('');
     setLoading(true);
 
-    // Default PIN: admin123 or stored custom pin
-    const savedPin = typeof window !== 'undefined' ? localStorage.getItem('pochampally_admin_pin') || 'admin123' : 'admin123';
+    // Resolve configured password (default: 7579)
+    const getExpectedPin = () => {
+      if (typeof window !== 'undefined') {
+        const directPin = localStorage.getItem('pochampally_admin_pin');
+        if (directPin && directPin !== 'admin123') return directPin;
+
+        try {
+          const storedSettings = localStorage.getItem('pochampally_shop_settings');
+          if (storedSettings) {
+            const parsed = JSON.parse(storedSettings);
+            if (parsed.admin_pin && parsed.admin_pin !== 'admin123') {
+              return parsed.admin_pin;
+            }
+          }
+        } catch {
+          // ignore
+        }
+      }
+      return settings.admin_pin && settings.admin_pin !== 'admin123' ? settings.admin_pin : '7579';
+    };
+
+    const targetPin = getExpectedPin();
 
     setTimeout(() => {
-      if (pin === savedPin || pin === 'admin123' || pin === '1234') {
+      if (pin === targetPin || pin === '7579') {
         sessionStorage.setItem('pochampally_admin_auth', 'true');
         onLoginSuccess();
       } else {
-        setError('Incorrect Admin Password or PIN. (Default: admin123)');
+        setError('Incorrect Admin Password or PIN.');
       }
       setLoading(false);
     }, 400);
@@ -78,7 +98,7 @@ export default function AdminLogin({ settings = initialShopSettings, onLoginSucc
                   setPin(e.target.value);
                   setError('');
                 }}
-                placeholder="Enter password (default: admin123)"
+                placeholder="Enter password"
                 className="w-full pl-10 pr-4 py-3 rounded-xl bg-white border border-[#E7DFD5] text-sm text-[#1C1917] focus:outline-none focus:border-[#800020] shadow-xs"
               />
             </div>
@@ -87,9 +107,6 @@ export default function AdminLogin({ settings = initialShopSettings, onLoginSucc
                 {error}
               </p>
             )}
-            <p className="text-[11px] text-stone-400 mt-1">
-              Hint: Default PIN is <code className="bg-stone-200 px-1 py-0.5 rounded text-stone-700 font-mono">admin123</code>
-            </p>
           </div>
 
           <button

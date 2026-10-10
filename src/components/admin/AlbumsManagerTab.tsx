@@ -300,10 +300,10 @@ export default function AlbumsManagerTab({
 
   // Delete Safety Check
   const handleRequestDelete = (album: Album) => {
-    const safety = checkDeleteSafety('album', album.id);
+    const safety = checkDeleteSafety(album.id);
     setAlbumToDelete({
       album,
-      warning: safety.warningMessage,
+      warning: safety.message,
     });
   };
 
