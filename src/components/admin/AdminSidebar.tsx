@@ -71,7 +71,6 @@ export default function AdminSidebar({
     { id: 'shop', label: 'Shop Information', icon: Store, section: 'Website Content' },
     { id: 'homepage', label: 'Homepage Banner', icon: Sparkles },
     { id: 'about', label: 'About Pochampally', icon: BookOpen },
-    { id: 'steps', label: 'How Sarees Are Made', icon: ListOrdered },
     { id: 'contact', label: 'Contact Information', icon: Phone, section: 'Settings' },
     { id: 'settings', label: 'Security & PIN', icon: Settings },
   ];

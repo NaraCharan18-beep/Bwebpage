@@ -179,7 +179,7 @@ export default function AboutTab({ about, onSaveAbout }: AboutTabProps) {
                   accept="image/*"
                   onChange={handleImageUpload}
                   disabled={isUploading}
-                  className="hidden"
+                  className="sr-only"
                 />
               </label>
             </div>

@@ -19,6 +19,7 @@ import {
   initialAlbums 
 } from './seed-data';
 import { getSupabaseClient, isSupabaseConfigured } from './supabase';
+import { getIdb, setIdb } from './idb';
 
 const STORAGE_KEYS = {
   SETTINGS: 'pochampally_settings_v5',
@@ -48,7 +49,7 @@ function notifyDataChanged() {
   }
 }
 
-// Local Storage Helpers
+// Local Storage & IndexedDB Helpers
 function getFromStorage<T>(key: string, defaultValue: T): T {
   if (typeof window === 'undefined') return defaultValue;
   try {
@@ -66,12 +67,14 @@ function getFromStorage<T>(key: string, defaultValue: T): T {
 
 function setToStorage<T>(key: string, value: T): void {
   if (typeof window === 'undefined') return;
+  // Always persist asynchronously into IndexedDB (unlimited photo & collection storage)
+  setIdb(key, value).catch((e) => console.warn(`IDB write failed for ${key}:`, e));
   try {
     localStorage.setItem(key, JSON.stringify(value));
-    notifyDataChanged();
   } catch (e) {
-    console.error(`Error saving ${key} to storage:`, e);
+    console.warn(`LocalStorage quota exceeded for ${key}. Photos are safely stored in IndexedDB.`, e);
   }
+  notifyDataChanged();
 }
 
 export function initLocalStore() {
@@ -100,7 +103,6 @@ export function initLocalStore() {
     
     // Load collections
     const storedCols = getFromStorage<Collection[]>(STORAGE_KEYS.COLLECTIONS, initialCollections);
-    // Ensure every collection has a valid sarees array
     cachedData.collections = storedCols.map(col => {
       const matchInitial = initialCollections.find(ic => ic.id === col.id);
       return {
@@ -114,6 +116,14 @@ export function initLocalStore() {
     cachedData.albums = getFromStorage(STORAGE_KEYS.ALBUMS, initialAlbums);
     cachedData.enquiries = getFromStorage(STORAGE_KEYS.ENQUIRIES, []);
     cachedData.initialized = true;
+
+    // Asynchronously hydrate from IndexedDB for any high-res photos that exceeded localStorage quota
+    getIdb<Collection[]>(STORAGE_KEYS.COLLECTIONS).then((idbCols) => {
+      if (idbCols && Array.isArray(idbCols) && idbCols.length > 0) {
+        cachedData.collections = idbCols;
+        notifyDataChanged();
+      }
+    }).catch(() => {});
   }
 }
 
@@ -285,6 +295,18 @@ export async function deleteProcessStep(id: string): Promise<void> {
 // ==========================================
 export async function getCollections(onlyActive = false): Promise<Collection[]> {
   initLocalStore();
+
+  if (typeof window !== 'undefined') {
+    try {
+      const idbCols = await getIdb<Collection[]>(STORAGE_KEYS.COLLECTIONS);
+      if (idbCols && Array.isArray(idbCols) && idbCols.length > 0) {
+        cachedData.collections = idbCols;
+      }
+    } catch {
+      // Ignore
+    }
+  }
+
   const client = getSupabaseClient();
   if (client && isSupabaseConfigured()) {
     try {
@@ -331,7 +353,16 @@ export async function saveCollection(collection: Collection): Promise<void> {
   const client = getSupabaseClient();
   if (client && isSupabaseConfigured()) {
     try {
-      await client.from('collections').upsert(updated);
+      await client.from('collections').upsert({
+        id: updated.id,
+        name: updated.name,
+        slug: updated.slug,
+        description: updated.description,
+        cover_image: updated.cover_image,
+        display_order: updated.display_order,
+        status: updated.status,
+        updated_at: updated.updated_at,
+      });
     } catch (e) {
       console.error('Supabase upsert collection failed:', e);
     }
@@ -363,7 +394,10 @@ export async function addSareesToCollection(
   newSarees: Partial<SareeItem>[]
 ): Promise<Collection | null> {
   initLocalStore();
-  const colIndex = cachedData.collections.findIndex(c => c.id === collectionId);
+  let colIndex = cachedData.collections.findIndex(c => c.id === collectionId);
+  if (colIndex === -1 && cachedData.collections.length > 0) {
+    colIndex = 0;
+  }
   if (colIndex === -1) return null;
 
   const col = cachedData.collections[colIndex];
@@ -371,10 +405,10 @@ export async function addSareesToCollection(
   
   const createdSarees: SareeItem[] = newSarees.map((s, idx) => ({
     id: s.id || `saree-${Date.now()}-${idx}-${Math.random().toString(36).substring(2, 6)}`,
-    code: s.code || `S-${col.sarees.length + idx + 1}`,
-    name: s.name || `Saree ${col.sarees.length + idx + 1}`,
+    code: s.code || `S-${existingSarees.length + idx + 1}`,
+    name: s.name || `Saree ${existingSarees.length + idx + 1}`,
     image_url: s.image_url || '/images/hero_saree.jpg',
-    collection_id: collectionId,
+    collection_id: col.id,
     collection_name: col.name,
     fabric: s.fabric || '',
     color: s.color || '',
@@ -398,6 +432,25 @@ export async function addSareesToCollection(
   cachedData.collections[colIndex] = updatedCol;
   setToStorage(STORAGE_KEYS.COLLECTIONS, cachedData.collections);
   syncCollectionToAlbum(updatedCol);
+
+  // Sync collection metadata to Supabase if connected
+  const client = getSupabaseClient();
+  if (client && isSupabaseConfigured()) {
+    try {
+      await client.from('collections').upsert({
+        id: updatedCol.id,
+        name: updatedCol.name,
+        slug: updatedCol.slug,
+        description: updatedCol.description,
+        cover_image: updatedCol.cover_image,
+        display_order: updatedCol.display_order,
+        status: updatedCol.status,
+        updated_at: updatedCol.updated_at,
+      });
+    } catch (e) {
+      console.warn('Supabase upsert collection failed:', e);
+    }
+  }
 
   return updatedCol;
 }
@@ -575,6 +628,38 @@ export async function getAlbumById(id: string): Promise<Album | null> {
   return cachedData.albums.find(a => a.id === id) || null;
 }
 
+// Helper to sync Albums back into Collections so photo album changes always show on customer page
+function syncAlbumToCollection(album: Album) {
+  let colIndex = cachedData.collections.findIndex(c => c.id === album.collection_id || c.id === album.id.replace('alb-', ''));
+  if (colIndex === -1 && cachedData.collections.length > 0) {
+    colIndex = 0;
+  }
+  if (colIndex >= 0) {
+    const col = cachedData.collections[colIndex];
+    const sarees: SareeItem[] = (album.photos || []).map((p, idx) => ({
+      id: p.id,
+      code: p.details?.code || p.details?.saree_code || `${col.slug.toUpperCase().slice(0, 4)}-${String(idx + 1).padStart(3, '0')}`,
+      name: p.details?.saree_name || p.caption || `Saree ${idx + 1}`,
+      image_url: p.url,
+      collection_id: col.id,
+      collection_name: col.name,
+      price: p.details?.price ?? null,
+      show_price: Boolean(p.details?.price),
+      fabric: p.details?.fabric || '',
+      color: p.details?.color || '',
+      description: p.details?.description || '',
+      order: p.order || idx + 1,
+      is_cover: Boolean(p.is_cover),
+      availability: (p.details?.availability as any) || 'available',
+      created_at: new Date().toISOString(),
+    }));
+    col.sarees = sarees;
+    if (album.cover_image) col.cover_image = album.cover_image;
+    col.updated_at = new Date().toISOString();
+    setToStorage(STORAGE_KEYS.COLLECTIONS, cachedData.collections);
+  }
+}
+
 export async function saveAlbum(album: Album): Promise<void> {
   initLocalStore();
   const index = cachedData.albums.findIndex(a => a.id === album.id);
@@ -585,6 +670,7 @@ export async function saveAlbum(album: Album): Promise<void> {
     cachedData.albums.unshift(updated);
   }
   setToStorage(STORAGE_KEYS.ALBUMS, cachedData.albums);
+  syncAlbumToCollection(updated);
 }
 
 export async function deleteAlbum(id: string): Promise<void> {

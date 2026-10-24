@@ -152,7 +152,7 @@ export default function HomepageTab({ homepage, onSaveHomepage }: HomepageTabPro
                   accept="image/*"
                   onChange={handleImageUpload}
                   disabled={isUploading}
-                  className="hidden"
+                  className="sr-only"
                 />
               </label>
 

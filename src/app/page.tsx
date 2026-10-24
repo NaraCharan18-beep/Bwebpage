@@ -4,7 +4,6 @@ import React, { useState, useEffect } from 'react';
 import Navbar from '@/components/customer/Navbar';
 import HeroSection from '@/components/customer/HeroSection';
 import AboutSection from '@/components/customer/AboutSection';
-import ProcessStorySection from '@/components/customer/ProcessStorySection';
 import CollectionAlbumBrowser from '@/components/customer/CollectionAlbumBrowser';
 import StoreInfoSection from '@/components/customer/StoreInfoSection';
 import ContactSection from '@/components/customer/ContactSection';
@@ -14,21 +13,18 @@ import {
   getShopSettings, 
   getHomepageContent, 
   getAboutContent, 
-  getProcessSteps, 
   getCollections 
 } from '@/lib/data-store';
 import { 
   ShopSettings, 
   HomepageContent, 
   AboutContent, 
-  ProcessStep, 
   Collection 
 } from '@/lib/types';
 import { 
   initialShopSettings, 
   initialHomepageContent, 
   initialAboutContent, 
-  initialProcessSteps, 
   initialCollections 
 } from '@/lib/seed-data';
 import { MessageCircle, QrCode } from 'lucide-react';
@@ -37,24 +33,21 @@ export default function CustomerHomePage() {
   const [settings, setSettings] = useState<ShopSettings>(initialShopSettings);
   const [homepage, setHomepage] = useState<HomepageContent>(initialHomepageContent);
   const [about, setAbout] = useState<AboutContent>(initialAboutContent);
-  const [steps, setSteps] = useState<ProcessStep[]>(initialProcessSteps);
   const [collections, setCollections] = useState<Collection[]>(initialCollections);
   const [isQrModalOpen, setIsQrModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
   const loadData = async () => {
     try {
-      const [s, h, a, st, col] = await Promise.all([
+      const [s, h, a, col] = await Promise.all([
         getShopSettings(),
         getHomepageContent(),
         getAboutContent(),
-        getProcessSteps(),
         getCollections(true),
       ]);
       setSettings(s);
       setHomepage(h);
       setAbout(a);
-      setSteps(st);
       setCollections(col);
     } catch (e) {
       console.error('Error loading data:', e);
@@ -99,26 +92,24 @@ export default function CustomerHomePage() {
         {/* 3. Heritage & GI Indication Information */}
         <AboutSection content={about} />
 
-        {/* 4. Storytelling: How Our Sarees Are Made */}
-        <ProcessStorySection steps={steps} />
-
-        {/* 5. Physical Showroom & Google Maps Location */}
+        {/* 4. Physical Showroom & Google Maps Location */}
         <StoreInfoSection
           settings={settings}
           onOpenQr={() => setIsQrModalOpen(true)}
         />
 
-        {/* 6. Customer Consultation & Direct Contact */}
+        {/* 5. Customer Consultation & Direct Contact */}
         <ContactSection settings={settings} />
       </main>
 
       {/* Footer */}
       <Footer settings={settings} sections={collections as any} />
 
-      {/* Preserved Visiting Card QR Code Modal */}
+      {/* Showroom Visiting Card QR Code Modal */}
       <QrCodeModal
         settings={settings}
         isOpen={isQrModalOpen}
+        initialTab="website"
         onClose={() => setIsQrModalOpen(false)}
       />
 

@@ -27,7 +27,7 @@ export default function QrCodeModal({
   settings, 
   isOpen, 
   onClose,
-  initialTab = 'whatsapp'
+  initialTab = 'website'
 }: QrCodeModalProps) {
   const [activeTab, setActiveTab] = useState<'whatsapp' | 'website'>(initialTab);
   const [copied, setCopied] = useState(false);
@@ -100,19 +100,6 @@ export default function QrCodeModal({
         <div className="bg-[#EFE7DC] p-1 rounded-2xl grid grid-cols-2 gap-1 border border-[#E0D5C7]">
           <button
             type="button"
-            onClick={() => { setActiveTab('whatsapp'); setCopied(false); }}
-            className={`py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-              activeTab === 'whatsapp'
-                ? 'bg-[#25D366] text-white shadow-md'
-                : 'text-stone-700 hover:text-stone-900'
-            }`}
-          >
-            <MessageCircle className="w-4 h-4 shrink-0" />
-            <span className="truncate">1. WhatsApp QR</span>
-          </button>
-
-          <button
-            type="button"
             onClick={() => { setActiveTab('website'); setCopied(false); }}
             className={`py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
               activeTab === 'website'
@@ -121,11 +108,93 @@ export default function QrCodeModal({
             }`}
           >
             <QrCode className="w-4 h-4 shrink-0" />
-            <span className="truncate">2. Visiting Card QR</span>
+            <span className="truncate">1. Visiting Card QR</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => { setActiveTab('whatsapp'); setCopied(false); }}
+            className={`py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+              activeTab === 'whatsapp'
+                ? 'bg-[#25D366] text-white shadow-md'
+                : 'text-stone-700 hover:text-stone-900'
+            }`}
+          >
+            <MessageCircle className="w-4 h-4 shrink-0" />
+            <span className="truncate">2. WhatsApp Group</span>
           </button>
         </div>
 
-        {/* TAB 1: WhatsApp Group QR */}
+        {/* TAB 1: Visiting Card Digital Showroom QR */}
+        {activeTab === 'website' && (
+          <div className="space-y-4 animate-in fade-in duration-200">
+            <div className="bg-white rounded-2xl p-3 sm:p-4 shadow-sm border border-[#E7DFD5]">
+              <div className="p-3 bg-white rounded-xl shadow-inner border-2 border-dashed border-[#D4AF37] inline-block">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/images/visiting_card_qr.jpg"
+                  alt="Showroom Visiting Card Back QR Code"
+                  className="w-48 h-48 sm:w-52 sm:h-52 mx-auto object-contain block"
+                />
+              </div>
+
+              <div className="mt-3 flex items-center justify-center gap-1.5 text-xs font-bold text-[#800020]">
+                <Smartphone className="w-3.5 h-3.5 text-[#D4AF37]" />
+                <span>Showroom Visiting Card QR</span>
+              </div>
+              <p className="text-[11px] text-stone-600 mt-0.5 leading-relaxed">
+                Scan with any mobile camera to open our live digital saree showroom:
+              </p>
+              <div className="mt-1.5 px-2.5 py-1.5 bg-[#FAF7F2] rounded-lg border border-[#E7DFD5] text-[11px] font-mono font-medium text-[#800020] truncate">
+                {websiteUrl}
+              </div>
+            </div>
+
+            {/* Action Buttons for Visiting Card */}
+            <div className="grid grid-cols-2 gap-2">
+              <a
+                href={websiteUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="py-2.5 px-3 rounded-xl bg-[#800020] hover:bg-[#660019] text-white text-xs font-bold shadow transition-colors flex items-center justify-center gap-1.5"
+              >
+                <span>Open Showroom</span>
+                <ExternalLink className="w-3 h-3 opacity-75" />
+              </a>
+
+              <button
+                type="button"
+                onClick={() => handleCopy(websiteUrl)}
+                className="py-2.5 px-3 rounded-xl bg-white border border-[#D6C7B2] hover:bg-stone-50 text-xs font-semibold text-stone-800 flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+              >
+                {copied ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
+                <span>{copied ? 'Link Copied' : 'Copy Website Link'}</span>
+              </button>
+            </div>
+
+            <div className="flex gap-2">
+              <a
+                href="/images/visiting_card_qr.jpg"
+                download="visiting-card-back-qr.jpg"
+                className="flex-1 py-2 px-3 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 text-[11px] font-semibold flex items-center justify-center gap-1.5 transition-colors"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Download QR Image</span>
+              </a>
+
+              <button
+                type="button"
+                onClick={handleShare}
+                className="flex-1 py-2 px-3 rounded-xl bg-[#FAF7F2] border border-[#D6C7B2] hover:bg-stone-200 text-stone-700 text-[11px] font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+              >
+                <Share2 className="w-3.5 h-3.5 text-[#800020]" />
+                <span>Share with Friends</span>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* TAB 2: WhatsApp Group QR */}
         {activeTab === 'whatsapp' && (
           <div className="space-y-4 animate-in fade-in duration-200">
             <div className="bg-white rounded-2xl p-3 sm:p-4 shadow-sm border border-[#E7DFD5]">
@@ -178,75 +247,6 @@ export default function QrCodeModal({
               <Download className="w-3.5 h-3.5" />
               <span>Download WhatsApp QR Image</span>
             </a>
-          </div>
-        )}
-
-        {/* TAB 2: Visiting Card Digital Showroom QR */}
-        {activeTab === 'website' && (
-          <div className="space-y-4 animate-in fade-in duration-200">
-            <div className="bg-white rounded-2xl p-3 sm:p-4 shadow-sm border border-[#E7DFD5]">
-              <div className="p-3 bg-white rounded-xl shadow-inner border-2 border-dashed border-[#D4AF37] inline-block">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src="/images/visiting_card_qr.jpg"
-                  alt="Showroom Visiting Card Back QR Code"
-                  className="w-48 h-48 sm:w-52 sm:h-52 mx-auto object-contain block"
-                />
-              </div>
-
-              <div className="mt-3 flex items-center justify-center gap-1.5 text-xs font-bold text-[#800020]">
-                <Smartphone className="w-3.5 h-3.5 text-[#D4AF37]" />
-                <span>Back of Visiting Card QR</span>
-              </div>
-              <p className="text-[11px] text-stone-600 mt-0.5 leading-relaxed">
-                Scan with any mobile camera to open our live digital saree showroom:
-              </p>
-              <div className="mt-1.5 px-2.5 py-1.5 bg-[#FAF7F2] rounded-lg border border-[#E7DFD5] text-[11px] font-mono font-medium text-[#800020] truncate">
-                {websiteUrl}
-              </div>
-            </div>
-
-            {/* Action Buttons for Visiting Card */}
-            <div className="grid grid-cols-2 gap-2">
-              <a
-                href={websiteUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="py-2.5 px-3 rounded-xl bg-[#800020] hover:bg-[#660019] text-white text-xs font-bold shadow transition-colors flex items-center justify-center gap-1.5"
-              >
-                <span>Open Showroom</span>
-                <ExternalLink className="w-3 h-3 opacity-75" />
-              </a>
-
-              <button
-                type="button"
-                onClick={() => handleCopy(websiteUrl)}
-                className="py-2.5 px-3 rounded-xl bg-white border border-[#D6C7B2] hover:bg-stone-50 text-xs font-semibold text-stone-800 flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-              >
-                {copied ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
-                <span>{copied ? 'Link Copied' : 'Copy Website Link'}</span>
-              </button>
-            </div>
-
-            <div className="flex gap-2">
-              <a
-                href="/images/visiting_card_qr.jpg"
-                download="visiting-card-back-qr.jpg"
-                className="flex-1 py-2 px-3 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 text-[11px] font-semibold flex items-center justify-center gap-1.5 transition-colors"
-              >
-                <Download className="w-3.5 h-3.5" />
-                <span>Download QR Image</span>
-              </a>
-
-              <button
-                type="button"
-                onClick={handleShare}
-                className="flex-1 py-2 px-3 rounded-xl bg-[#FAF7F2] border border-[#D6C7B2] hover:bg-stone-200 text-stone-700 text-[11px] font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-              >
-                <Share2 className="w-3.5 h-3.5 text-[#800020]" />
-                <span>Share with Friends</span>
-              </button>
-            </div>
           </div>
         )}
 

@@ -125,11 +125,6 @@ export default function Footer({ settings, sections }: FooterProps) {
                 </a>
               </li>
               <li>
-                <a href="#process" className="hover:text-white transition-colors">
-                  How Sarees Are Made
-                </a>
-              </li>
-              <li>
                 <a href="#store" className="hover:text-white transition-colors">
                   Showroom Location
                 </a>

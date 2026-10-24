@@ -650,7 +650,7 @@ export default function AlbumsManagerTab({
                       accept="image/*"
                       onChange={handleBatchPhotoUpload}
                       disabled={isUploading}
-                      className="hidden"
+                      className="sr-only"
                     />
                   </label>
 
@@ -763,7 +763,7 @@ export default function AlbumsManagerTab({
                                 <input
                                   type="file"
                                   accept="image/*"
-                                  className="hidden"
+                                  className="sr-only"
                                   onChange={(e) => handleReplacePhoto(idx, e)}
                                 />
                               </label>

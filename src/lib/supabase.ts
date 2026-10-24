@@ -1,23 +1,36 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-// Default environment variables
-let supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-let supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+// Cache client instance
+let cachedClient: SupabaseClient | null = null;
 
-// In browser context, allow dynamic override from Admin Database Settings
-if (typeof window !== 'undefined') {
-  const customUrl = localStorage.getItem('pochampally_supabase_url');
-  const customKey = localStorage.getItem('pochampally_supabase_key');
-  if (customUrl) supabaseUrl = customUrl;
-  if (customKey) supabaseAnonKey = customKey;
-}
+export const getSupabaseConfig = () => {
+  let url = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+  let key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+  if (typeof window !== 'undefined') {
+    url = localStorage.getItem('pochampally_supabase_url') || url;
+    key = localStorage.getItem('pochampally_supabase_key') || key;
+  }
+  return { url, key };
+};
+
+export const setSupabaseConfig = (url: string, key: string) => {
+  if (typeof window !== 'undefined') {
+    if (url) localStorage.setItem('pochampally_supabase_url', url);
+    else localStorage.removeItem('pochampally_supabase_url');
+    if (key) localStorage.setItem('pochampally_supabase_key', key);
+    else localStorage.removeItem('pochampally_supabase_key');
+  }
+  // Invalidate cached client so new credentials take effect immediately
+  cachedClient = null;
+};
 
 export const isSupabaseConfigured = (): boolean => {
+  const { url, key } = getSupabaseConfig();
   return Boolean(
-    supabaseUrl && 
-    supabaseAnonKey && 
-    supabaseUrl !== 'https://your-project.supabase.co' &&
-    supabaseUrl.startsWith('https://')
+    url && 
+    key && 
+    url !== 'https://your-project.supabase.co' &&
+    url.startsWith('https://')
   );
 };
 
@@ -25,8 +38,13 @@ export const getSupabaseClient = (): SupabaseClient | null => {
   if (!isSupabaseConfigured()) {
     return null;
   }
+  if (cachedClient) {
+    return cachedClient;
+  }
+  const { url, key } = getSupabaseConfig();
   try {
-    return createClient(supabaseUrl, supabaseAnonKey);
+    cachedClient = createClient(url, key);
+    return cachedClient;
   } catch (error) {
     console.error('Error initializing Supabase client:', error);
     return null;
@@ -37,10 +55,11 @@ export const supabase = getSupabaseClient();
 
 /**
  * Client-side high performance image compressor.
- * Downscales huge phone/camera photos (e.g. 5-10MB) to crisp web-optimized resolution (~1600px, ~150-250KB).
+ * Downscales camera/phone photos (e.g. 5-15MB) into crisp, beautiful web-optimized images
+ * (~1100px max dimension, ~40-60KB).
  */
-export async function compressImage(file: File, maxDimension = 1600, quality = 0.82): Promise<Blob> {
-  return new Promise((resolve, reject) => {
+export async function compressImage(file: File, maxDimension = 1100, quality = 0.76): Promise<Blob> {
+  return new Promise((resolve) => {
     // If not an image or SVG, return as is
     if (!file.type.startsWith('image/') || file.type === 'image/svg+xml') {
       resolve(file);
@@ -75,14 +94,14 @@ export async function compressImage(file: File, maxDimension = 1600, quality = 0
         return;
       }
 
-      // Smooth sampling
+      // Smooth high quality sampling
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = 'high';
       ctx.drawImage(img, 0, 0, width, height);
 
       canvas.toBlob(
         (blob) => {
-          if (blob) {
+          if (blob && blob.size < file.size) {
             resolve(blob);
           } else {
             resolve(file);
@@ -107,8 +126,8 @@ export async function compressImage(file: File, maxDimension = 1600, quality = 0
  */
 export async function uploadSareeImage(file: File): Promise<string> {
   try {
-    // Compress first for fast upload and lightweight storage
-    const compressedBlob = await compressImage(file, 1600, 0.82);
+    // Crisp compression down to ~45KB
+    const compressedBlob = await compressImage(file, 1100, 0.76);
     const client = getSupabaseClient();
     
     if (client && isSupabaseConfigured()) {
@@ -156,22 +175,3 @@ export async function uploadSareeImage(file: File): Promise<string> {
     });
   }
 }
-
-export const getSupabaseConfig = () => {
-  let url = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-  let key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
-  if (typeof window !== 'undefined') {
-    url = localStorage.getItem('pochampally_supabase_url') || url;
-    key = localStorage.getItem('pochampally_supabase_key') || key;
-  }
-  return { url, key };
-};
-
-export const setSupabaseConfig = (url: string, key: string) => {
-  if (typeof window !== 'undefined') {
-    if (url) localStorage.setItem('pochampally_supabase_url', url);
-    else localStorage.removeItem('pochampally_supabase_url');
-    if (key) localStorage.setItem('pochampally_supabase_key', key);
-    else localStorage.removeItem('pochampally_supabase_key');
-  }
-};

@@ -27,7 +27,6 @@ export default function Navbar({ settings, onOpenQr }: NavbarProps) {
     { label: 'Home', href: '#' },
     { label: 'Collections', href: '#collections' },
     { label: 'Heritage', href: '#about' },
-    { label: 'Craft Process', href: '#process' },
     { label: 'Visit Store', href: '#store' },
     { label: 'Contact', href: '#contact' },
   ];

@@ -96,6 +96,16 @@ export default function CollectionsManagerTab({
   const [bulkUploadProgress, setBulkUploadProgress] = useState('');
   const [isBulkUploading, setIsBulkUploading] = useState(false);
 
+  // --- Single Saree Add State ---
+  const [isAddSingleModalOpen, setIsAddSingleModalOpen] = useState(false);
+  const [singleSareePhotoUrl, setSingleSareePhotoUrl] = useState('');
+  const [singleSareeName, setSingleSareeName] = useState('');
+  const [singleSareeCode, setSingleSareeCode] = useState('');
+  const [singleSareePrice, setSingleSareePrice] = useState<number | ''>('');
+  const [singleSareeIsCover, setSingleSareeIsCover] = useState(false);
+  const [isSingleUploading, setIsSingleUploading] = useState(false);
+  const [uploadFeedback, setUploadFeedback] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
   // Listen to external sidebar event to open create collection modal
   useEffect(() => {
     const handleOpenModal = () => {
@@ -228,7 +238,7 @@ export default function CollectionsManagerTab({
     setSelectedCollectionId(colId);
   };
 
-  // Bulk Upload directly into an existing collection (Requirement #10)
+  // Bulk Upload directly into an existing collection
   const handleBulkUploadToExisting = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!selectedCollection) return;
     const files = e.target.files;
@@ -257,14 +267,84 @@ export default function CollectionsManagerTab({
       }
 
       await addSareesToCollection(selectedCollection.id, newSarees);
+      setUploadFeedback({
+        type: 'success',
+        text: `✓ Successfully added ${newSarees.length} saree photo${newSarees.length > 1 ? 's' : ''}! Visible now on the customer view page.`,
+      });
+      setTimeout(() => setUploadFeedback(null), 6000);
       onRefresh?.();
-    } catch (err) {
+    } catch (err: any) {
       console.error('Bulk upload error:', err);
+      setUploadFeedback({
+        type: 'error',
+        text: `Upload error: ${err.message || 'Failed to upload'}. Please try again.`,
+      });
     } finally {
       setIsBulkUploading(false);
       setBulkUploadProgress('');
       e.target.value = '';
     }
+  };
+
+  // Open Add Single Saree Modal
+  const handleOpenAddSingleModal = () => {
+    if (!selectedCollection) return;
+    const prefix = generatePrefix(selectedCollection.name);
+    const nextNum = (selectedCollection.sarees?.length || 0) + 1;
+    setSingleSareeCode(`${prefix}-${String(nextNum).padStart(3, '0')}`);
+    setSingleSareeName(`${selectedCollection.name} #${nextNum}`);
+    setSingleSareePhotoUrl('');
+    setSingleSareePrice('');
+    setSingleSareeIsCover(false);
+    setIsAddSingleModalOpen(true);
+  };
+
+  // Handle single photo upload from file picker
+  const handleSinglePhotoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsSingleUploading(true);
+    try {
+      const url = await uploadSareeImage(file);
+      setSingleSareePhotoUrl(url);
+      const cleanName = file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
+      if (cleanName && cleanName.length > 2) {
+        setSingleSareeName(cleanName);
+      }
+    } catch (err) {
+      console.error('Single photo upload failed:', err);
+      alert('Photo upload failed. Please try another image.');
+    } finally {
+      setIsSingleUploading(false);
+      e.target.value = '';
+    }
+  };
+
+  // Submit single saree form
+  const handleSaveSingleSaree = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedCollection) return;
+    if (!singleSareePhotoUrl) {
+      alert('Please select or upload a saree photo first!');
+      return;
+    }
+    const saree: Partial<SareeItem> = {
+      code: singleSareeCode.trim() || `S-${(selectedCollection.sarees?.length || 0) + 1}`,
+      name: singleSareeName.trim() || `Saree ${(selectedCollection.sarees?.length || 0) + 1}`,
+      image_url: singleSareePhotoUrl,
+      price: singleSareePrice !== '' ? Number(singleSareePrice) : null,
+      show_price: singleSareePrice !== '',
+      is_cover: singleSareeIsCover,
+      availability: 'available',
+    };
+    await addSareesToCollection(selectedCollection.id, [saree]);
+    setUploadFeedback({
+      type: 'success',
+      text: `✓ Added "${saree.name}" to ${selectedCollection.name}! Visible now on the customer view page.`,
+    });
+    setTimeout(() => setUploadFeedback(null), 6000);
+    onRefresh?.();
+    setIsAddSingleModalOpen(false);
   };
 
   // Set Saree as Collection Cover
@@ -451,9 +531,9 @@ export default function CollectionsManagerTab({
               </div>
             </div>
 
-            {/* Actions: Bulk Upload, Edit Collection Details, Delete */}
+            {/* Actions: Bulk Upload, Add Single Saree, Edit Collection Details, Delete */}
             <div className="flex flex-wrap items-center gap-2">
-              {/* Bulk Upload Saree Photos Input (Requirement #10) */}
+              {/* Bulk Upload Saree Photos Input */}
               <label className="px-4 py-2 rounded-xl bg-[#800020] hover:bg-[#660019] text-white text-xs font-bold shadow-xs flex items-center gap-2 cursor-pointer transition-all hover:scale-105">
                 <Upload className="w-4 h-4 text-[#D4AF37]" />
                 <span>{isBulkUploading ? bulkUploadProgress : '+ Bulk Upload Sarees'}</span>
@@ -463,12 +543,23 @@ export default function CollectionsManagerTab({
                   accept="image/*"
                   onChange={handleBulkUploadToExisting}
                   disabled={isBulkUploading}
-                  className="hidden"
+                  className="sr-only"
                 />
               </label>
 
+              {/* Add Single Saree Button */}
+              <button
+                type="button"
+                onClick={handleOpenAddSingleModal}
+                className="px-3.5 py-2 rounded-xl bg-white border border-[#D4AF37] hover:bg-[#FAF7F2] text-[#800020] text-xs font-bold shadow-xs flex items-center gap-1.5 transition-all cursor-pointer"
+              >
+                <Plus className="w-4 h-4 text-[#800020]" />
+                <span>+ Add Saree Photo</span>
+              </button>
+
               {/* Edit Details Button */}
               <button
+                type="button"
                 onClick={() => {
                   setEditingCollection(selectedCollection);
                   setIsEditCollectionModalOpen(true);
@@ -481,6 +572,7 @@ export default function CollectionsManagerTab({
 
               {/* Delete Collection Button */}
               <button
+                type="button"
                 onClick={() =>
                   setDeleteConfirmTarget({
                     type: 'collection',
@@ -495,6 +587,18 @@ export default function CollectionsManagerTab({
               </button>
             </div>
           </div>
+
+          {/* Upload Status / Success Banner */}
+          {uploadFeedback && (
+            <div className={`p-3.5 rounded-2xl text-xs font-semibold flex items-center gap-2 shadow-xs transition-all ${
+              uploadFeedback.type === 'success' 
+                ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' 
+                : 'bg-rose-50 text-rose-800 border border-rose-200'
+            }`}>
+              <Check className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span>{uploadFeedback.text}</span>
+            </div>
+          )}
 
           {/* Sarees Grid in this Collection */}
           {selectedCollection.sarees && selectedCollection.sarees.length > 0 ? (
@@ -621,17 +725,29 @@ export default function CollectionsManagerTab({
               <p className="text-xs text-stone-500 max-w-sm mx-auto">
                 Bulk upload multiple saree photos directly into this collection.
               </p>
-              <label className="inline-flex px-5 py-2.5 rounded-xl bg-[#800020] text-white text-xs font-bold cursor-pointer hover:bg-[#660019]">
-                <Upload className="w-4 h-4 mr-2" />
-                <span>Bulk Upload Sarees</span>
-                <input
-                  type="file"
-                  multiple
-                  accept="image/*"
-                  onChange={handleBulkUploadToExisting}
-                  className="hidden"
-                />
-              </label>
+              <div className="flex flex-wrap items-center justify-center gap-3">
+                <label className="inline-flex px-5 py-2.5 rounded-xl bg-[#800020] text-white text-xs font-bold cursor-pointer hover:bg-[#660019] shadow-sm">
+                  <Upload className="w-4 h-4 mr-2 text-[#D4AF37]" />
+                  <span>{isBulkUploading ? bulkUploadProgress : 'Bulk Upload Multiple Sarees'}</span>
+                  <input
+                    type="file"
+                    multiple
+                    accept="image/*"
+                    onChange={handleBulkUploadToExisting}
+                    disabled={isBulkUploading}
+                    className="sr-only"
+                  />
+                </label>
+
+                <button
+                  type="button"
+                  onClick={handleOpenAddSingleModal}
+                  className="inline-flex px-5 py-2.5 rounded-xl bg-white border border-[#D4AF37] hover:bg-stone-50 text-[#800020] text-xs font-bold shadow-xs items-center gap-2 cursor-pointer"
+                >
+                  <Plus className="w-4 h-4 text-[#800020]" />
+                  <span>+ Add Single Saree</span>
+                </button>
+              </div>
             </div>
           )}
         </div>
@@ -837,7 +953,7 @@ export default function CollectionsManagerTab({
                     accept="image/*"
                     onChange={handleBulkUploadForCreate}
                     disabled={isCreateUploading}
-                    className="hidden"
+                    className="sr-only"
                   />
                 </label>
 
@@ -1115,6 +1231,159 @@ export default function CollectionsManagerTab({
                   className="px-5 py-2 bg-[#800020] text-white font-bold text-xs rounded-xl shadow-xs"
                 >
                   Save Saree
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ======================================================== */}
+      {/* MODAL 4: + ADD SINGLE SAREE */}
+      {/* ======================================================== */}
+      {isAddSingleModalOpen && selectedCollection && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/80 backdrop-blur-xs overflow-y-auto">
+          <div className="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl p-6 sm:p-7 space-y-4 max-h-[92vh] overflow-y-auto border border-[#E7DFD5]">
+            <div className="flex items-center justify-between pb-2 border-b border-stone-200">
+              <div>
+                <h3 className="font-serif text-lg font-bold text-stone-900 flex items-center gap-2">
+                  <Plus className="w-5 h-5 text-[#800020]" />
+                  <span>Add Saree to {selectedCollection.name}</span>
+                </h3>
+                <p className="text-xs text-stone-500 mt-0.5">
+                  Select a photo, enter optional details, and save to customer catalog.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsAddSingleModalOpen(false)}
+                className="w-8 h-8 rounded-full bg-stone-100 hover:bg-stone-200 text-stone-600 flex items-center justify-center cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveSingleSaree} className="space-y-4">
+              {/* Photo Upload & Preview Zone */}
+              <div>
+                <label className="block text-xs font-bold text-stone-800 mb-1.5">
+                  Saree Photograph *
+                </label>
+
+                {singleSareePhotoUrl ? (
+                  <div className="relative aspect-[3/4] max-w-[200px] mx-auto rounded-2xl overflow-hidden border-2 border-[#800020] shadow-md bg-stone-100 group">
+                    <Image
+                      src={singleSareePhotoUrl}
+                      alt="Uploaded Saree Preview"
+                      fill
+                      className="object-cover"
+                    />
+                    <label className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white text-xs font-bold cursor-pointer">
+                      <Upload className="w-6 h-6 mb-1 text-[#D4AF37]" />
+                      <span>Replace Photo</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleSinglePhotoSelect}
+                        disabled={isSingleUploading}
+                        className="sr-only"
+                      />
+                    </label>
+                  </div>
+                ) : (
+                  <label className="cursor-pointer flex flex-col items-center justify-center p-8 border-2 border-dashed border-[#800020]/50 hover:border-[#800020] bg-rose-50/20 hover:bg-rose-50/60 rounded-2xl transition-colors text-center">
+                    <Upload className="w-8 h-8 text-[#800020] mb-2 animate-bounce" />
+                    <span className="text-xs font-bold text-stone-900">
+                      {isSingleUploading ? 'Uploading & Optimizing Photo...' : '+ Choose Saree Photograph'}
+                    </span>
+                    <span className="text-[11px] text-stone-500 mt-0.5">
+                      Select photo from phone camera or gallery
+                    </span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleSinglePhotoSelect}
+                      disabled={isSingleUploading}
+                      className="sr-only"
+                    />
+                  </label>
+                )}
+              </div>
+
+              {/* Saree Code & Name */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-stone-700 mb-1">
+                    Saree Code
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={singleSareeCode}
+                    onChange={(e) => setSingleSareeCode(e.target.value)}
+                    placeholder="e.g. PSS-001"
+                    className="w-full px-3 py-2 text-xs bg-[#FAF7F2] border border-[#E7DFD5] rounded-xl font-mono font-bold text-stone-900"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-stone-700 mb-1">
+                    Saree Name
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={singleSareeName}
+                    onChange={(e) => setSingleSareeName(e.target.value)}
+                    placeholder="e.g. Pure Silk Ikat Pink"
+                    className="w-full px-3 py-2 text-xs bg-[#FAF7F2] border border-[#E7DFD5] rounded-xl font-semibold text-stone-900"
+                  />
+                </div>
+              </div>
+
+              {/* Price & Cover Toggle */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-stone-700 mb-1">
+                    Price in ₹ (Optional)
+                  </label>
+                  <input
+                    type="number"
+                    value={singleSareePrice}
+                    onChange={(e) => setSingleSareePrice(e.target.value ? Number(e.target.value) : '')}
+                    placeholder="Leave blank for Enquire"
+                    className="w-full px-3 py-2 text-xs bg-[#FAF7F2] border border-[#E7DFD5] rounded-xl text-stone-900"
+                  />
+                </div>
+
+                <div className="flex items-center pt-5">
+                  <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-stone-800">
+                    <input
+                      type="checkbox"
+                      checked={singleSareeIsCover}
+                      onChange={(e) => setSingleSareeIsCover(e.target.checked)}
+                      className="w-4 h-4 rounded text-[#800020] accent-[#800020]"
+                    />
+                    <span>Set as Collection Cover Photo</span>
+                  </label>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="pt-3 border-t border-stone-200 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsAddSingleModalOpen(false)}
+                  className="px-4 py-2 text-xs font-semibold text-stone-600 hover:bg-stone-100 rounded-xl cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={!singleSareePhotoUrl || isSingleUploading}
+                  className="px-5 py-2.5 bg-[#800020] hover:bg-[#660019] text-white font-bold text-xs rounded-xl shadow-xs transition-colors disabled:opacity-50 cursor-pointer"
+                >
+                  Add Saree to Collection
                 </button>
               </div>
             </form>
