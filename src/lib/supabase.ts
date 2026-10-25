@@ -61,7 +61,7 @@ export const supabase = getSupabaseClient();
 export async function compressImage(file: File, maxDimension = 1100, quality = 0.76): Promise<Blob> {
   return new Promise((resolve) => {
     // If not an image or SVG, return as is
-    if (!file.type.startsWith('image/') || file.type === 'image/svg+xml') {
+    if ((!file.type.startsWith('image/') && !file.name.match(/\.(jpg|jpeg|png|webp|heic|heif|bmp)$/i)) || file.type === 'image/svg+xml') {
       resolve(file);
       return;
     }
@@ -101,7 +101,7 @@ export async function compressImage(file: File, maxDimension = 1100, quality = 0
 
       canvas.toBlob(
         (blob) => {
-          if (blob && blob.size < file.size) {
+          if (blob) {
             resolve(blob);
           } else {
             resolve(file);

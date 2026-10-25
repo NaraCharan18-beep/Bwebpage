@@ -124,6 +124,17 @@ export function initLocalStore() {
         notifyDataChanged();
       }
     }).catch(() => {});
+
+    // Asynchronously hydrate homepage from IndexedDB in case hero photo was stored in IndexedDB
+    getIdb<HomepageContent>(STORAGE_KEYS.HOMEPAGE).then((idbHome) => {
+      if (idbHome && idbHome.hero_image_url) {
+        cachedData.homepage = {
+          ...cachedData.homepage,
+          ...idbHome,
+        };
+        notifyDataChanged();
+      }
+    }).catch(() => {});
   }
 }
 
@@ -173,11 +184,31 @@ export async function getHomepageContent(): Promise<HomepageContent> {
   if (client && isSupabaseConfigured()) {
     try {
       const { data, error } = await client.from('homepage_content').select('*').eq('id', 'primary').single();
-      if (!error && data) return data;
+      if (!error && data) {
+        cachedData.homepage = data;
+        return data;
+      }
     } catch (e) {
       console.warn('Supabase fetch homepage failed, using local store:', e);
     }
   }
+
+  // Hydrate from IndexedDB if hero photo or homepage was stored there
+  if (typeof window !== 'undefined') {
+    try {
+      const idbHome = await getIdb<HomepageContent>(STORAGE_KEYS.HOMEPAGE);
+      if (idbHome && idbHome.hero_image_url) {
+        cachedData.homepage = {
+          ...cachedData.homepage,
+          ...idbHome,
+        };
+        return cachedData.homepage;
+      }
+    } catch (e) {
+      // fallback to cachedData
+    }
+  }
+
   return cachedData.homepage;
 }
 
@@ -190,6 +221,11 @@ export async function updateHomepageContent(content: Partial<HomepageContent>): 
   };
   setToStorage(STORAGE_KEYS.HOMEPAGE, cachedData.homepage);
 
+  // Guarantee persistence in IndexedDB
+  if (typeof window !== 'undefined') {
+    await setIdb(STORAGE_KEYS.HOMEPAGE, cachedData.homepage).catch(() => {});
+  }
+
   const client = getSupabaseClient();
   if (client && isSupabaseConfigured()) {
     try {
@@ -198,6 +234,7 @@ export async function updateHomepageContent(content: Partial<HomepageContent>): 
       console.error('Supabase update homepage failed:', e);
     }
   }
+  notifyDataChanged();
   return cachedData.homepage;
 }
 

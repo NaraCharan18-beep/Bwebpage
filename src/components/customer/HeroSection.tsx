@@ -98,6 +98,7 @@ export default function HeroSection({ content, settings }: HeroSectionProps) {
                   alt={content.hero_title || 'Authentic Pochampally Silk Saree'}
                   fill
                   priority
+                  unoptimized
                   className="object-cover object-top hover:scale-105 transition-transform duration-700"
                   sizes="(max-width: 768px) 100vw, 45vw"
                 />
