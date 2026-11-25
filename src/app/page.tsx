@@ -8,7 +8,6 @@ import CollectionAlbumBrowser from '@/components/customer/CollectionAlbumBrowser
 import StoreInfoSection from '@/components/customer/StoreInfoSection';
 import ContactSection from '@/components/customer/ContactSection';
 import Footer from '@/components/customer/Footer';
-import QrCodeModal from '@/components/customer/QrCodeModal';
 import { 
   getShopSettings, 
   getHomepageContent, 
@@ -27,14 +26,13 @@ import {
   initialAboutContent, 
   initialCollections 
 } from '@/lib/seed-data';
-import { MessageCircle, QrCode } from 'lucide-react';
+import { MessageCircle } from 'lucide-react';
 
 export default function CustomerHomePage() {
   const [settings, setSettings] = useState<ShopSettings>(initialShopSettings);
   const [homepage, setHomepage] = useState<HomepageContent>(initialHomepageContent);
   const [about, setAbout] = useState<AboutContent>(initialAboutContent);
   const [collections, setCollections] = useState<Collection[]>(initialCollections);
-  const [isQrModalOpen, setIsQrModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
   const loadData = async () => {
@@ -75,8 +73,8 @@ export default function CustomerHomePage() {
 
   return (
     <div className="min-h-screen flex flex-col bg-[#FAF7F2] text-[#1C1917] selection:bg-[#800020] selection:text-white">
-      {/* Customer Header Navbar with Preserved Visiting QR Code */}
-      <Navbar settings={settings} onOpenQr={() => setIsQrModalOpen(true)} />
+      {/* Customer Header Navbar */}
+      <Navbar settings={settings} />
 
       {/* Main Page Sections */}
       <main className="flex-1">
@@ -93,10 +91,7 @@ export default function CustomerHomePage() {
         <AboutSection content={about} />
 
         {/* 4. Physical Showroom & Google Maps Location */}
-        <StoreInfoSection
-          settings={settings}
-          onOpenQr={() => setIsQrModalOpen(true)}
-        />
+        <StoreInfoSection settings={settings} />
 
         {/* 5. Customer Consultation & Direct Contact */}
         <ContactSection settings={settings} />
@@ -105,27 +100,11 @@ export default function CustomerHomePage() {
       {/* Footer */}
       <Footer settings={settings} sections={collections as any} />
 
-      {/* Showroom Visiting Card QR Code Modal */}
-      <QrCodeModal
-        settings={settings}
-        isOpen={isQrModalOpen}
-        initialTab="website"
-        onClose={() => setIsQrModalOpen(false)}
-      />
-
-      {/* Floating Action Pill: Visiting QR Code + WhatsApp Showroom */}
-      <div className="fixed bottom-5 right-5 z-40 flex flex-col items-end gap-2.5">
-        <button
-          onClick={() => setIsQrModalOpen(true)}
-          className="w-11 h-11 rounded-full bg-white text-[#800020] shadow-lg border border-[#D4AF37] flex items-center justify-center hover:scale-105 transition-transform cursor-pointer"
-          title="Show Visiting Card & WhatsApp QR Codes"
-        >
-          <QrCode className="w-5 h-5 text-[#800020]" />
-        </button>
-
+      {/* Floating Action Pill: Direct WhatsApp Showroom Support */}
+      <div className="fixed bottom-5 right-5 z-40">
         <a
           href={`https://wa.me/${settings.whatsapp}?text=${encodeURIComponent(
-            `Hello ${settings.shop_name}, I am visiting your website and would like assistance viewing your Pochampally saree collections.`
+            `Hello ${settings.shop_name}, I am visiting your website catalogue and would like assistance viewing your Pochampally saree collections.`
           )}`}
           target="_blank"
           rel="noopener noreferrer"

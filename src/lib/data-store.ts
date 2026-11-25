@@ -79,6 +79,18 @@ function setToStorage<T>(key: string, value: T): void {
 
 export function initLocalStore() {
   if (typeof window !== 'undefined' && !cachedData.initialized) {
+    // If the browser on this device has Supabase credentials stored in localStorage,
+    // sync them to the server-side .env.local so that all other devices and SSR have them
+    const localUrl = localStorage.getItem('pochampally_supabase_url');
+    const localKey = localStorage.getItem('pochampally_supabase_key');
+    if (localUrl && localKey && localUrl.startsWith('https://')) {
+      fetch('/api/supabase/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: localUrl, key: localKey }),
+      }).catch(() => {});
+    }
+
     cachedData.settings = getFromStorage(STORAGE_KEYS.SETTINGS, initialShopSettings);
     if (!cachedData.settings.shop_name || cachedData.settings.shop_name.includes('Charan')) {
       cachedData.settings = { ...cachedData.settings, shop_name: 'SRI LAXMI NARSHIMA SARES HOUSE' };
@@ -86,6 +98,14 @@ export function initLocalStore() {
     }
     if (!cachedData.settings.admin_pin || cachedData.settings.admin_pin === 'admin123') {
       cachedData.settings = { ...cachedData.settings, admin_pin: '7579' };
+      setToStorage(STORAGE_KEYS.SETTINGS, cachedData.settings);
+    }
+    if (!cachedData.settings.whatsapp || cachedData.settings.whatsapp === '919849012345') {
+      cachedData.settings = { 
+        ...cachedData.settings, 
+        phone: '+91 80742 57579',
+        whatsapp: '918074257579',
+      };
       setToStorage(STORAGE_KEYS.SETTINGS, cachedData.settings);
     }
     if (!cachedData.settings.whatsapp_group_url) {
@@ -98,6 +118,14 @@ export function initLocalStore() {
     }
 
     cachedData.homepage = getFromStorage(STORAGE_KEYS.HOMEPAGE, initialHomepageContent);
+    if (!cachedData.homepage.hero_images || cachedData.homepage.hero_image_url === '/images/hero_saree.jpg') {
+      cachedData.homepage = {
+        ...cachedData.homepage,
+        hero_image_url: '/images/hero_saree_model.jpg',
+        hero_images: ['/images/hero_saree_model.jpg', '/images/hero_saree.jpg'],
+      };
+      setToStorage(STORAGE_KEYS.HOMEPAGE, cachedData.homepage);
+    }
     cachedData.about = getFromStorage(STORAGE_KEYS.ABOUT, initialAboutContent);
     cachedData.steps = getFromStorage(STORAGE_KEYS.STEPS, initialProcessSteps);
     
@@ -105,11 +133,18 @@ export function initLocalStore() {
     const storedCols = getFromStorage<Collection[]>(STORAGE_KEYS.COLLECTIONS, initialCollections);
     cachedData.collections = storedCols.map(col => {
       const matchInitial = initialCollections.find(ic => ic.id === col.id);
+      let sarees = Array.isArray(col.sarees) && col.sarees.length > 0 
+        ? col.sarees 
+        : (matchInitial?.sarees || []);
+      if (col.id === 'col-pochampally-silk' && !sarees.some(s => s.id === 'saree-pss-model')) {
+        const modelSaree = matchInitial?.sarees?.find(s => s.id === 'saree-pss-model');
+        if (modelSaree) {
+          sarees = [...sarees, modelSaree];
+        }
+      }
       return {
         ...col,
-        sarees: Array.isArray(col.sarees) && col.sarees.length > 0 
-          ? col.sarees 
-          : (matchInitial?.sarees || []),
+        sarees,
       };
     });
 
@@ -127,10 +162,13 @@ export function initLocalStore() {
 
     // Asynchronously hydrate homepage from IndexedDB in case hero photo was stored in IndexedDB
     getIdb<HomepageContent>(STORAGE_KEYS.HOMEPAGE).then((idbHome) => {
-      if (idbHome && idbHome.hero_image_url) {
+      if (idbHome && idbHome.hero_image_url && idbHome.hero_image_url !== '/images/hero_saree.jpg') {
         cachedData.homepage = {
           ...cachedData.homepage,
           ...idbHome,
+          hero_images: idbHome.hero_images && idbHome.hero_images.length > 0 
+            ? idbHome.hero_images 
+            : ['/images/hero_saree_model.jpg', '/images/hero_saree.jpg'],
         };
         notifyDataChanged();
       }
@@ -147,7 +185,23 @@ export async function getShopSettings(): Promise<ShopSettings> {
   if (client && isSupabaseConfigured()) {
     try {
       const { data, error } = await client.from('shop_settings').select('*').eq('id', 'primary').single();
-      if (!error && data) return data;
+      if (!error && data) {
+        let merged = { ...cachedData.settings, ...data };
+        // If authenticated administrator session is present, fetch private admin settings
+        try {
+          const { data: privData } = await client.from('private_admin_settings').select('admin_pin').eq('id', 'primary').single();
+          if (privData?.admin_pin) {
+            merged.admin_pin = privData.admin_pin;
+            if (typeof window !== 'undefined') {
+              localStorage.setItem('pochampally_admin_pin', privData.admin_pin);
+            }
+          }
+        } catch {
+          // unauthenticated public visitor cannot read private_admin_settings
+        }
+        cachedData.settings = merged;
+        return merged;
+      }
     } catch (e) {
       console.warn('Supabase fetch settings failed, using local store:', e);
     }
@@ -167,7 +221,17 @@ export async function updateShopSettings(newSettings: Partial<ShopSettings>): Pr
   const client = getSupabaseClient();
   if (client && isSupabaseConfigured()) {
     try {
-      await client.from('shop_settings').upsert(cachedData.settings);
+      // Separate admin_pin so it is NEVER sent to public shop_settings table
+      const { admin_pin, ...publicSettings } = cachedData.settings;
+      await client.from('shop_settings').upsert(publicSettings);
+
+      if (admin_pin) {
+        await client.from('private_admin_settings').upsert({
+          id: 'primary',
+          admin_pin,
+          updated_at: new Date().toISOString(),
+        });
+      }
     } catch (e) {
       console.error('Supabase update settings failed:', e);
     }
@@ -201,6 +265,10 @@ export async function getHomepageContent(): Promise<HomepageContent> {
         cachedData.homepage = {
           ...cachedData.homepage,
           ...idbHome,
+          hero_image_url: idbHome.hero_image_url === '/images/hero_saree.jpg' ? '/images/hero_saree_model.jpg' : idbHome.hero_image_url,
+          hero_images: idbHome.hero_images && idbHome.hero_images.length > 0 
+            ? idbHome.hero_images 
+            : ['/images/hero_saree_model.jpg', '/images/hero_saree.jpg'],
         };
         return cachedData.homepage;
       }
@@ -333,6 +401,27 @@ export async function deleteProcessStep(id: string): Promise<void> {
 export async function getCollections(onlyActive = false): Promise<Collection[]> {
   initLocalStore();
 
+  const client = getSupabaseClient();
+  if (client && isSupabaseConfigured()) {
+    try {
+      let query = client.from('collections').select('*').order('display_order', { ascending: true });
+      if (onlyActive) query = query.eq('status', 'active');
+      const { data, error } = await query;
+      if (!error && Array.isArray(data)) {
+        const parsedCols: Collection[] = data.map((col: any) => ({
+          ...col,
+          sarees: Array.isArray(col.sarees) ? col.sarees : [],
+        }));
+        cachedData.collections = parsedCols;
+        setToStorage(STORAGE_KEYS.COLLECTIONS, parsedCols);
+        return onlyActive ? parsedCols.filter(c => c.status === 'active') : parsedCols;
+      }
+    } catch (e) {
+      console.warn('Supabase fetch collections failed, using local store:', e);
+    }
+  }
+
+  // Fallback to IndexedDB / local memory
   if (typeof window !== 'undefined') {
     try {
       const idbCols = await getIdb<Collection[]>(STORAGE_KEYS.COLLECTIONS);
@@ -341,18 +430,6 @@ export async function getCollections(onlyActive = false): Promise<Collection[]> 
       }
     } catch {
       // Ignore
-    }
-  }
-
-  const client = getSupabaseClient();
-  if (client && isSupabaseConfigured()) {
-    try {
-      let query = client.from('collections').select('*').order('display_order', { ascending: true });
-      if (onlyActive) query = query.eq('status', 'active');
-      const { data, error } = await query;
-      if (!error && data && data.length > 0) return data;
-    } catch (e) {
-      console.warn('Supabase fetch collections failed, using local store:', e);
     }
   }
 
@@ -365,6 +442,20 @@ export async function getCollections(onlyActive = false): Promise<Collection[]> 
 
 export async function getCollectionById(id: string): Promise<Collection | null> {
   initLocalStore();
+  const client = getSupabaseClient();
+  if (client && isSupabaseConfigured()) {
+    try {
+      const { data, error } = await client.from('collections').select('*').eq('id', id).single();
+      if (!error && data) {
+        return {
+          ...data,
+          sarees: Array.isArray(data.sarees) ? data.sarees : [],
+        };
+      }
+    } catch (e) {
+      console.warn('Supabase fetch collection by id failed:', e);
+    }
+  }
   return cachedData.collections.find(c => c.id === id) || null;
 }
 
@@ -377,20 +468,10 @@ export async function saveCollection(collection: Collection): Promise<void> {
     updated_at: new Date().toISOString(),
   };
 
-  if (index >= 0) {
-    cachedData.collections[index] = updated;
-  } else {
-    cachedData.collections.push(updated);
-  }
-  setToStorage(STORAGE_KEYS.COLLECTIONS, cachedData.collections);
-
-  // Sync to albums for backward compatibility
-  syncCollectionToAlbum(updated);
-
   const client = getSupabaseClient();
   if (client && isSupabaseConfigured()) {
     try {
-      await client.from('collections').upsert({
+      const { error } = await client.from('collections').upsert({
         id: updated.id,
         name: updated.name,
         slug: updated.slug,
@@ -398,31 +479,87 @@ export async function saveCollection(collection: Collection): Promise<void> {
         cover_image: updated.cover_image,
         display_order: updated.display_order,
         status: updated.status,
+        is_featured: Boolean(updated.is_featured),
+        section_id: updated.section_id || null,
+        sarees: updated.sarees,
         updated_at: updated.updated_at,
       });
-    } catch (e) {
-      console.error('Supabase upsert collection failed:', e);
+      if (error) {
+        console.error('Supabase upsert collection failed:', error);
+        throw new Error(`Failed to save collection to Supabase: ${error.message}`);
+      }
+    } catch (e: any) {
+      console.error('Supabase save error:', e);
+      throw e;
     }
   }
+
+  if (index >= 0) {
+    cachedData.collections[index] = updated;
+  } else {
+    cachedData.collections.push(updated);
+  }
+  setToStorage(STORAGE_KEYS.COLLECTIONS, cachedData.collections);
+  syncCollectionToAlbum(updated);
+  notifyDataChanged();
 }
 
 export async function deleteCollection(id: string): Promise<{ success: boolean; message?: string }> {
   initLocalStore();
+  const client = getSupabaseClient();
+  if (client && isSupabaseConfigured()) {
+    try {
+      const { error } = await client.from('collections').delete().eq('id', id);
+      if (error) {
+        console.error('Supabase delete collection failed:', error);
+        throw new Error(`Failed to delete from Supabase: ${error.message}`);
+      }
+      try {
+        await client.from('albums').delete().eq('collection_id', id);
+      } catch {
+        // albums table is optional backward compat
+      }
+    } catch (e: any) {
+      console.error('Supabase delete error:', e);
+      throw e;
+    }
+  }
+
   cachedData.collections = cachedData.collections.filter(c => c.id !== id);
   cachedData.albums = cachedData.albums.filter(a => a.collection_id !== id && a.id !== `alb-${id}`);
   
   setToStorage(STORAGE_KEYS.COLLECTIONS, cachedData.collections);
   setToStorage(STORAGE_KEYS.ALBUMS, cachedData.albums);
-
-  const client = getSupabaseClient();
-  if (client && isSupabaseConfigured()) {
-    try {
-      await client.from('collections').delete().eq('id', id);
-    } catch (e) {
-      console.error('Supabase delete collection failed:', e);
-    }
-  }
+  notifyDataChanged();
   return { success: true };
+}
+
+// Replace an Existing Collection (e.g. from new catalog or PDF upload)
+export async function replaceCollection(
+  targetCollectionId: string,
+  newCollectionData: Partial<Collection> & { sarees: SareeItem[] }
+): Promise<Collection> {
+  initLocalStore();
+  const colIndex = cachedData.collections.findIndex(c => c.id === targetCollectionId);
+  const existing = colIndex >= 0 ? cachedData.collections[colIndex] : null;
+
+  const updated: Collection = {
+    id: targetCollectionId,
+    name: newCollectionData.name || existing?.name || 'Updated Collection',
+    slug: newCollectionData.slug || existing?.slug || `col-${Date.now()}`,
+    description: newCollectionData.description || existing?.description || '',
+    cover_image: newCollectionData.cover_image || newCollectionData.sarees[0]?.image_url || '/images/hero_saree.jpg',
+    display_order: newCollectionData.display_order || existing?.display_order || 1,
+    status: newCollectionData.status || existing?.status || 'active',
+    is_featured: newCollectionData.is_featured ?? existing?.is_featured ?? false,
+    section_id: newCollectionData.section_id || existing?.section_id,
+    sarees: newCollectionData.sarees || [],
+    created_at: existing?.created_at || new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  };
+
+  await saveCollection(updated);
+  return updated;
 }
 
 // Bulk Add Sarees to Collection
@@ -466,29 +603,7 @@ export async function addSareesToCollection(
     updated_at: new Date().toISOString(),
   };
 
-  cachedData.collections[colIndex] = updatedCol;
-  setToStorage(STORAGE_KEYS.COLLECTIONS, cachedData.collections);
-  syncCollectionToAlbum(updatedCol);
-
-  // Sync collection metadata to Supabase if connected
-  const client = getSupabaseClient();
-  if (client && isSupabaseConfigured()) {
-    try {
-      await client.from('collections').upsert({
-        id: updatedCol.id,
-        name: updatedCol.name,
-        slug: updatedCol.slug,
-        description: updatedCol.description,
-        cover_image: updatedCol.cover_image,
-        display_order: updatedCol.display_order,
-        status: updatedCol.status,
-        updated_at: updatedCol.updated_at,
-      });
-    } catch (e) {
-      console.warn('Supabase upsert collection failed:', e);
-    }
-  }
-
+  await saveCollection(updatedCol);
   return updatedCol;
 }
 
@@ -510,10 +625,7 @@ export async function updateSaree(collectionId: string, updatedSaree: SareeItem)
     });
   }
 
-  col.updated_at = new Date().toISOString();
-  cachedData.collections[colIndex] = col;
-  setToStorage(STORAGE_KEYS.COLLECTIONS, cachedData.collections);
-  syncCollectionToAlbum(col);
+  await saveCollection(col);
 }
 
 // Delete Single Saree
@@ -528,10 +640,7 @@ export async function deleteSaree(collectionId: string, sareeId: string): Promis
     col.sarees[0].is_cover = true;
     col.cover_image = col.sarees[0].image_url;
   }
-  col.updated_at = new Date().toISOString();
-  cachedData.collections[colIndex] = col;
-  setToStorage(STORAGE_KEYS.COLLECTIONS, cachedData.collections);
-  syncCollectionToAlbum(col);
+  await saveCollection(col);
 }
 
 // Move Saree to another Collection
@@ -647,6 +756,30 @@ export async function getAlbums(options?: {
   featuredOnly?: boolean;
 }): Promise<Album[]> {
   initLocalStore();
+  const client = getSupabaseClient();
+  if (client && isSupabaseConfigured()) {
+    try {
+      let query = client.from('albums').select('*').order('display_order', { ascending: true });
+      if (options?.collectionId && options.collectionId !== 'all') {
+        query = query.eq('collection_id', options.collectionId);
+      }
+      if (options?.onlyActive) {
+        query = query.eq('status', 'active');
+      }
+      const { data, error } = await query;
+      if (!error && data && data.length > 0) {
+        const parsedAlbums: Album[] = data.map((alb: any) => ({
+          ...alb,
+          photos: Array.isArray(alb.photos) ? alb.photos : [],
+        }));
+        cachedData.albums = parsedAlbums;
+        setToStorage(STORAGE_KEYS.ALBUMS, parsedAlbums);
+      }
+    } catch (e) {
+      console.warn('Supabase fetch albums error:', e);
+    }
+  }
+
   let results = [...cachedData.albums];
   if (options?.collectionId && options.collectionId !== 'all') {
     results = results.filter(a => a.collection_id === options.collectionId);
@@ -662,6 +795,20 @@ export async function getAlbums(options?: {
 
 export async function getAlbumById(id: string): Promise<Album | null> {
   initLocalStore();
+  const client = getSupabaseClient();
+  if (client && isSupabaseConfigured()) {
+    try {
+      const { data, error } = await client.from('albums').select('*').eq('id', id).single();
+      if (!error && data) {
+        return {
+          ...data,
+          photos: Array.isArray(data.photos) ? data.photos : [],
+        };
+      }
+    } catch (e) {
+      console.warn('Supabase fetch album by id error:', e);
+    }
+  }
   return cachedData.albums.find(a => a.id === id) || null;
 }
 
@@ -694,6 +841,7 @@ function syncAlbumToCollection(album: Album) {
     if (album.cover_image) col.cover_image = album.cover_image;
     col.updated_at = new Date().toISOString();
     setToStorage(STORAGE_KEYS.COLLECTIONS, cachedData.collections);
+    saveCollection(col).catch(() => {});
   }
 }
 
@@ -708,10 +856,39 @@ export async function saveAlbum(album: Album): Promise<void> {
   }
   setToStorage(STORAGE_KEYS.ALBUMS, cachedData.albums);
   syncAlbumToCollection(updated);
+
+  const client = getSupabaseClient();
+  if (client && isSupabaseConfigured()) {
+    try {
+      await client.from('albums').upsert({
+        id: updated.id,
+        collection_id: updated.collection_id || null,
+        name: updated.name,
+        code: updated.code || null,
+        description: updated.description || null,
+        cover_image: updated.cover_image || null,
+        photos: updated.photos || [],
+        display_order: updated.display_order || 1,
+        status: updated.status || 'active',
+        is_featured: Boolean(updated.is_featured),
+        updated_at: updated.updated_at,
+      });
+    } catch (e) {
+      console.warn('Supabase save album error:', e);
+    }
+  }
 }
 
 export async function deleteAlbum(id: string): Promise<void> {
   initLocalStore();
+  const client = getSupabaseClient();
+  if (client && isSupabaseConfigured()) {
+    try {
+      await client.from('albums').delete().eq('id', id);
+    } catch (e) {
+      console.warn('Supabase delete album error:', e);
+    }
+  }
   cachedData.albums = cachedData.albums.filter(a => a.id !== id);
   setToStorage(STORAGE_KEYS.ALBUMS, cachedData.albums);
 }

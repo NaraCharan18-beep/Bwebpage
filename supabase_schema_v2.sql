@@ -1,0 +1,672 @@
+-- ==============================================================================
+-- SRI LAXMI NARSHIMA SAREES HOUSE - SUPABASE SCHEMA V2 (ENTERPRISE RBAC & SECURE)
+-- Preserves existing tables, columns, rows, images, and catalogue data
+-- Implements verified Supabase Auth administrator roles and anti-spam protection
+-- ==============================================================================
+
+-- ------------------------------------------------------------------------------
+-- 0. Diagnostic Helper: Query Existing Policies (Informational Read-Only)
+-- Run this anytime to inspect all active policies on your database:
+-- SELECT schemaname, tablename, policyname, roles, cmd FROM pg_policies WHERE schemaname IN ('public', 'storage');
+-- ------------------------------------------------------------------------------
+
+-- ------------------------------------------------------------------------------
+-- 1. Ensure all core tables exist (Preserves existing tables and records)
+-- ------------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.shop_settings (
+  id TEXT PRIMARY KEY DEFAULT 'primary',
+  shop_name TEXT NOT NULL,
+  tagline TEXT,
+  logo_url TEXT,
+  description TEXT,
+  about_shop TEXT,
+  address TEXT NOT NULL,
+  phone TEXT NOT NULL,
+  whatsapp TEXT NOT NULL,
+  email TEXT,
+  opening_hours TEXT,
+  google_maps_url TEXT,
+  google_maps_embed TEXT,
+  instagram_url TEXT,
+  facebook_url TEXT,
+  youtube_url TEXT,
+  whatsapp_group_url TEXT,
+  website_url TEXT,
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Dedicated Private Settings Table (Restricted strictly to verified admins; never exposed to public)
+CREATE TABLE IF NOT EXISTS public.private_admin_settings (
+  id TEXT PRIMARY KEY DEFAULT 'primary',
+  admin_pin TEXT,
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS public.homepage_content (
+  id TEXT PRIMARY KEY DEFAULT 'primary',
+  hero_title TEXT NOT NULL,
+  hero_subtitle TEXT,
+  hero_description TEXT,
+  hero_image_url TEXT NOT NULL,
+  hero_images JSONB DEFAULT '[]'::jsonb,
+  hero_badge TEXT,
+  explore_btn_text TEXT DEFAULT 'Explore Sarees',
+  contact_btn_text TEXT DEFAULT 'Contact Showroom',
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS public.about_content (
+  id TEXT PRIMARY KEY DEFAULT 'primary',
+  title TEXT NOT NULL,
+  subtitle TEXT,
+  description TEXT,
+  history_text TEXT,
+  ikat_explanation TEXT,
+  craftsmanship_text TEXT,
+  image_url TEXT,
+  highlights JSONB DEFAULT '[]'::jsonb,
+  years_of_heritage INT DEFAULT 120,
+  weavers_supported INT DEFAULT 85,
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS public.process_steps (
+  id TEXT PRIMARY KEY,
+  step_number INT NOT NULL,
+  title TEXT NOT NULL,
+  description TEXT NOT NULL,
+  image_url TEXT,
+  display_order INT NOT NULL DEFAULT 1,
+  is_active BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS public.collections (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  slug TEXT UNIQUE NOT NULL,
+  description TEXT,
+  cover_image TEXT,
+  display_order INT NOT NULL DEFAULT 1,
+  status TEXT DEFAULT 'active' CHECK (status IN ('active', 'hidden')),
+  sarees JSONB DEFAULT '[]'::jsonb,
+  is_featured BOOLEAN DEFAULT FALSE,
+  section_id TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS public.albums (
+  id TEXT PRIMARY KEY,
+  collection_id TEXT,
+  name TEXT NOT NULL,
+  code TEXT,
+  description TEXT,
+  cover_image TEXT,
+  photos JSONB DEFAULT '[]'::jsonb,
+  display_order INT NOT NULL DEFAULT 1,
+  status TEXT DEFAULT 'active' CHECK (status IN ('active', 'hidden')),
+  is_featured BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS public.enquiries (
+  id TEXT PRIMARY KEY,
+  customer_name TEXT NOT NULL,
+  phone TEXT NOT NULL,
+  saree_code TEXT,
+  collection_name TEXT,
+  saree_name TEXT,
+  album_name TEXT,
+  photo_code TEXT,
+  saree_sku TEXT,
+  message TEXT NOT NULL,
+  status TEXT DEFAULT 'new' CHECK (status IN ('new', 'contacted', 'resolved')),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Standalone Sarees Catalog Table (Preserves existing schema, records and image URLs)
+CREATE TABLE IF NOT EXISTS public.sarees (
+  id TEXT PRIMARY KEY,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  title TEXT,
+  description TEXT,
+  price NUMERIC,
+  category TEXT,
+  image_url TEXT
+);
+
+-- Legacy Sares Table (Preserved to prevent foreign key or historical reference breaks)
+CREATE TABLE IF NOT EXISTS public."Sares" (
+  id TEXT PRIMARY KEY,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Verified Administrator Users Table (Links directly to auth.users)
+CREATE TABLE IF NOT EXISTS public.admin_users (
+  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  email TEXT NOT NULL UNIQUE,
+  role TEXT NOT NULL DEFAULT 'admin' CHECK (role IN ('admin', 'super_admin')),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ------------------------------------------------------------------------------
+-- 2. Explicit Column Additions (Safe & Idempotent on existing tables)
+-- ------------------------------------------------------------------------------
+ALTER TABLE public.collections ADD COLUMN IF NOT EXISTS sarees JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE public.collections ADD COLUMN IF NOT EXISTS is_featured BOOLEAN DEFAULT FALSE;
+ALTER TABLE public.collections ADD COLUMN IF NOT EXISTS section_id TEXT;
+
+ALTER TABLE public.homepage_content ADD COLUMN IF NOT EXISTS hero_images JSONB DEFAULT '[]'::jsonb;
+
+ALTER TABLE public.about_content ADD COLUMN IF NOT EXISTS years_of_heritage INT DEFAULT 120;
+ALTER TABLE public.about_content ADD COLUMN IF NOT EXISTS weavers_supported INT DEFAULT 85;
+
+-- Ensure admin_pin column exists temporarily on shop_settings to allow safe migration if present
+ALTER TABLE public.shop_settings ADD COLUMN IF NOT EXISTS admin_pin TEXT;
+
+-- Safely copy existing admin_pin only if private_admin_settings does NOT already have a PIN set
+-- Prevents accidental overwriting of an existing private PIN
+INSERT INTO public.private_admin_settings (id, admin_pin)
+SELECT s.id, s.admin_pin 
+FROM public.shop_settings s
+WHERE s.admin_pin IS NOT NULL AND s.admin_pin <> ''
+ON CONFLICT (id) DO UPDATE SET 
+  admin_pin = COALESCE(public.private_admin_settings.admin_pin, EXCLUDED.admin_pin);
+
+-- Permanently remove admin_pin from the publicly accessible shop_settings table
+ALTER TABLE public.shop_settings DROP COLUMN IF EXISTS admin_pin;
+
+ALTER TABLE public.shop_settings ADD COLUMN IF NOT EXISTS whatsapp_group_url TEXT;
+ALTER TABLE public.shop_settings ADD COLUMN IF NOT EXISTS website_url TEXT;
+
+ALTER TABLE public.albums ADD COLUMN IF NOT EXISTS photos JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE public.albums ADD COLUMN IF NOT EXISTS is_featured BOOLEAN DEFAULT FALSE;
+
+ALTER TABLE public.enquiries ADD COLUMN IF NOT EXISTS saree_code TEXT;
+ALTER TABLE public.enquiries ADD COLUMN IF NOT EXISTS collection_name TEXT;
+ALTER TABLE public.enquiries ADD COLUMN IF NOT EXISTS saree_name TEXT;
+ALTER TABLE public.enquiries ADD COLUMN IF NOT EXISTS saree_sku TEXT;
+
+-- ------------------------------------------------------------------------------
+-- 3. Fast Query Indexes
+-- ------------------------------------------------------------------------------
+CREATE INDEX IF NOT EXISTS idx_collections_status ON public.collections(status);
+CREATE INDEX IF NOT EXISTS idx_collections_order ON public.collections(display_order);
+CREATE INDEX IF NOT EXISTS idx_albums_collection ON public.albums(collection_id);
+CREATE INDEX IF NOT EXISTS idx_enquiries_status ON public.enquiries(status);
+CREATE INDEX IF NOT EXISTS idx_admin_users_email ON public.admin_users(email);
+
+-- ------------------------------------------------------------------------------
+-- 4. Verified Administrator Verification Functions (Security Definer)
+-- Strict security: search_path = '' prevents search_path injection attacks.
+-- Single source of truth: public.admin_users table.
+-- Enabling instant access revocation when an admin row is deleted.
+-- ------------------------------------------------------------------------------
+
+-- Check if user is a verified administrator (Single source of truth: public.admin_users)
+CREATE OR REPLACE FUNCTION public.is_admin()
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+BEGIN
+  -- Returns TRUE only if user is authenticated AND exists in public.admin_users
+  -- Returns FALSE immediately for anonymous callers without executing queries
+  RETURN COALESCE(
+    auth.role() = 'authenticated' AND EXISTS (
+      SELECT 1 FROM public.admin_users 
+      WHERE id = auth.uid()
+    ),
+    false
+  );
+END;
+$$;
+
+-- Check if user is specifically a verified super_admin (Single source of truth: public.admin_users)
+CREATE OR REPLACE FUNCTION public.is_super_admin()
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+BEGIN
+  -- Returns TRUE only if user is authenticated AND has role = 'super_admin' in public.admin_users
+  -- Returns FALSE immediately for anonymous callers without executing queries
+  RETURN COALESCE(
+    auth.role() = 'authenticated' AND EXISTS (
+      SELECT 1 FROM public.admin_users 
+      WHERE id = auth.uid() AND role = 'super_admin'
+    ),
+    false
+  );
+END;
+$$;
+
+-- Secure Super Admin Registration: Sets role = 'super_admin' (Callable ONLY by service_role or project owner in SQL Editor)
+CREATE OR REPLACE FUNCTION public.register_super_admin(admin_email TEXT)
+RETURNS TEXT
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+  v_user_id UUID;
+BEGIN
+  SELECT id INTO v_user_id FROM auth.users WHERE email = lower(trim(admin_email)) LIMIT 1;
+  IF v_user_id IS NULL THEN
+    RETURN 'Notice: User ' || admin_email || ' does not exist in auth.users yet. Create user in Supabase Auth first, then call register_super_admin.';
+  END IF;
+
+  INSERT INTO public.admin_users (id, email, role)
+  VALUES (v_user_id, lower(trim(admin_email)), 'super_admin')
+  ON CONFLICT (id) DO UPDATE SET role = 'super_admin';
+
+  RETURN 'Success: ' || admin_email || ' is registered as a verified super_admin (Shop Owner)!';
+END;
+$$;
+
+-- Secure Ordinary Admin Registration: Sets role = 'admin' (NEVER demotes an existing super_admin)
+CREATE OR REPLACE FUNCTION public.register_admin(admin_email TEXT)
+RETURNS TEXT
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+  v_user_id UUID;
+  v_existing_role TEXT;
+BEGIN
+  SELECT id INTO v_user_id FROM auth.users WHERE email = lower(trim(admin_email)) LIMIT 1;
+  IF v_user_id IS NULL THEN
+    RETURN 'Notice: User ' || admin_email || ' does not exist in auth.users yet. Create user in Supabase Auth first, then call register_admin.';
+  END IF;
+
+  SELECT role INTO v_existing_role FROM public.admin_users WHERE id = v_user_id;
+  IF v_existing_role = 'super_admin' THEN
+    RETURN 'Notice: ' || admin_email || ' is already a verified super_admin (Shop Owner). Demotion to ordinary admin is blocked.';
+  END IF;
+
+  INSERT INTO public.admin_users (id, email, role)
+  VALUES (v_user_id, lower(trim(admin_email)), 'admin')
+  ON CONFLICT (id) DO UPDATE SET 
+    role = CASE 
+      WHEN public.admin_users.role = 'super_admin' THEN 'super_admin' 
+      ELSE 'admin' 
+    END;
+
+  RETURN 'Success: ' || admin_email || ' is registered as a verified administrator!';
+END;
+$$;
+
+-- Privileges: Grant execute on is_admin() and is_super_admin() to anon and authenticated
+-- Allows public SELECT policies on collections, albums, and process steps to evaluate without permission errors
+-- The functions safely return false for anonymous users in zero time
+REVOKE ALL ON FUNCTION public.is_admin() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.is_admin() TO anon, authenticated;
+
+REVOKE ALL ON FUNCTION public.is_super_admin() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.is_super_admin() TO anon, authenticated;
+
+REVOKE ALL ON FUNCTION public.register_admin(TEXT) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.register_admin(TEXT) FROM anon;
+REVOKE ALL ON FUNCTION public.register_admin(TEXT) FROM authenticated;
+GRANT EXECUTE ON FUNCTION public.register_admin(TEXT) TO service_role;
+
+REVOKE ALL ON FUNCTION public.register_super_admin(TEXT) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.register_super_admin(TEXT) FROM anon;
+REVOKE ALL ON FUNCTION public.register_super_admin(TEXT) FROM authenticated;
+GRANT EXECUTE ON FUNCTION public.register_super_admin(TEXT) TO service_role;
+
+-- ------------------------------------------------------------------------------
+-- 5. Storage Buckets Configuration (Non-destructive: DO NOTHING if bucket exists)
+-- Preserves existing bucket privacy and settings if already configured
+-- ------------------------------------------------------------------------------
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES 
+  ('saree-images', 'saree-images', true, 52428800, ARRAY['image/jpeg', 'image/png', 'image/webp', 'image/gif']),
+  ('sarees', 'sarees', true, 52428800, ARRAY['image/jpeg', 'image/png', 'image/webp', 'image/gif']),
+  ('collection-pdfs', 'collection-pdfs', true, 104857600, ARRAY['application/pdf'])
+ON CONFLICT (id) DO NOTHING;
+
+-- ------------------------------------------------------------------------------
+-- 6. Enable Row Level Security (RLS) on all tables
+-- ------------------------------------------------------------------------------
+ALTER TABLE public.shop_settings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.private_admin_settings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.homepage_content ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.about_content ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.process_steps ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.collections ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.albums ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.enquiries ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.admin_users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.sarees ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public."Sares" ENABLE ROW LEVEL SECURITY;
+
+-- ------------------------------------------------------------------------------
+-- 7. Clean Outdated Restrictive or Overly Permissive Policies
+-- Replaces insecure auth.role() = 'authenticated' policies which allowed any logged-in user to write
+-- ------------------------------------------------------------------------------
+DROP POLICY IF EXISTS "Public can view shop settings" ON public.shop_settings;
+DROP POLICY IF EXISTS "Admins have full access to shop settings" ON public.shop_settings;
+DROP POLICY IF EXISTS "Enable read for all on shop_settings" ON public.shop_settings;
+DROP POLICY IF EXISTS "Enable write for admin on shop_settings" ON public.shop_settings;
+
+DROP POLICY IF EXISTS "Admins have full access to private_admin_settings" ON public.private_admin_settings;
+
+DROP POLICY IF EXISTS "Public can view homepage content" ON public.homepage_content;
+DROP POLICY IF EXISTS "Admins have full access to homepage content" ON public.homepage_content;
+DROP POLICY IF EXISTS "Enable read for all on homepage_content" ON public.homepage_content;
+DROP POLICY IF EXISTS "Enable write for admin on homepage_content" ON public.homepage_content;
+
+DROP POLICY IF EXISTS "Public can view about content" ON public.about_content;
+DROP POLICY IF EXISTS "Admins have full access to about content" ON public.about_content;
+DROP POLICY IF EXISTS "Enable read for all on about_content" ON public.about_content;
+DROP POLICY IF EXISTS "Enable write for admin on about_content" ON public.about_content;
+
+DROP POLICY IF EXISTS "Public can view active process steps" ON public.process_steps;
+DROP POLICY IF EXISTS "Admins have full access to process steps" ON public.process_steps;
+DROP POLICY IF EXISTS "Enable read for all on process_steps" ON public.process_steps;
+DROP POLICY IF EXISTS "Enable write for admin on process_steps" ON public.process_steps;
+
+DROP POLICY IF EXISTS "Public can view active collections" ON public.collections;
+DROP POLICY IF EXISTS "Admins have full access to collections" ON public.collections;
+DROP POLICY IF EXISTS "Enable read for all on collections" ON public.collections;
+DROP POLICY IF EXISTS "Enable write for admin on collections" ON public.collections;
+
+DROP POLICY IF EXISTS "Public can view active albums" ON public.albums;
+DROP POLICY IF EXISTS "Admins have full access to albums" ON public.albums;
+DROP POLICY IF EXISTS "Enable read for all on albums" ON public.albums;
+DROP POLICY IF EXISTS "Enable write for admin on albums" ON public.albums;
+
+DROP POLICY IF EXISTS "Public can submit enquiries" ON public.enquiries;
+DROP POLICY IF EXISTS "Public can submit validated enquiries" ON public.enquiries;
+DROP POLICY IF EXISTS "Admins have full access to enquiries" ON public.enquiries;
+DROP POLICY IF EXISTS "Enable read for all on enquiries" ON public.enquiries;
+DROP POLICY IF EXISTS "Enable insert for all on enquiries" ON public.enquiries;
+DROP POLICY IF EXISTS "Enable update delete for admin on enquiries" ON public.enquiries;
+
+DROP POLICY IF EXISTS "Admins can view admin_users" ON public.admin_users;
+DROP POLICY IF EXISTS "Admins have full access to admin_users" ON public.admin_users;
+DROP POLICY IF EXISTS "Super admins can manage admin_users" ON public.admin_users;
+
+-- Drop standalone sarees and Sares legacy policies
+DROP POLICY IF EXISTS "Public can view sarees" ON public.sarees;
+DROP POLICY IF EXISTS "Admins have full access to sarees" ON public.sarees;
+DROP POLICY IF EXISTS "Enable read for all on sarees" ON public.sarees;
+DROP POLICY IF EXISTS "Enable write for admin on sarees" ON public.sarees;
+DROP POLICY IF EXISTS "Allow all on sarees" ON public.sarees;
+
+DROP POLICY IF EXISTS "Public can view Sares" ON public."Sares";
+DROP POLICY IF EXISTS "Admins have full access to Sares" ON public."Sares";
+DROP POLICY IF EXISTS "Enable read for all on Sares" ON public."Sares";
+DROP POLICY IF EXISTS "Enable write for admin on Sares" ON public."Sares";
+
+-- Drop insecure storage upload policies identified in audit
+DROP POLICY IF EXISTS "Allow uploads 1jzlisv_0" ON storage.objects;
+DROP POLICY IF EXISTS "Public Upload Sarees Storage" ON storage.objects;
+
+-- Drop legacy storage policies for saree-images, collection-pdfs and sarees
+DROP POLICY IF EXISTS "Public Access for Saree Images" ON storage.objects;
+DROP POLICY IF EXISTS "Admin Upload Saree Images" ON storage.objects;
+DROP POLICY IF EXISTS "Admin Update Saree Images" ON storage.objects;
+DROP POLICY IF EXISTS "Admin Delete Saree Images" ON storage.objects;
+DROP POLICY IF EXISTS "Public Upload for Saree Images" ON storage.objects;
+DROP POLICY IF EXISTS "Public Delete for Saree Images" ON storage.objects;
+
+DROP POLICY IF EXISTS "Public Access for Collection PDFs" ON storage.objects;
+DROP POLICY IF EXISTS "Admin Upload Collection PDFs" ON storage.objects;
+DROP POLICY IF EXISTS "Admin Update Collection PDFs" ON storage.objects;
+DROP POLICY IF EXISTS "Admin Delete Collection PDFs" ON storage.objects;
+DROP POLICY IF EXISTS "Public Access for PDFs" ON storage.objects;
+DROP POLICY IF EXISTS "Public Upload for PDFs" ON storage.objects;
+
+DROP POLICY IF EXISTS "Public Access for Sarees Bucket" ON storage.objects;
+DROP POLICY IF EXISTS "Admin Upload Sarees Bucket" ON storage.objects;
+DROP POLICY IF EXISTS "Admin Update Sarees Bucket" ON storage.objects;
+DROP POLICY IF EXISTS "Admin Delete Sarees Bucket" ON storage.objects;
+
+-- ------------------------------------------------------------------------------
+-- 8. Secure Storage Policies (RBAC Enforced)
+-- Customers: View published photographs and catalog PDFs (SELECT)
+-- Verified Administrators: Upload, update, and delete photographs and catalog PDFs
+-- ------------------------------------------------------------------------------
+
+-- Saree Images: Public can view, only Verified Admins can upload/modify/delete
+CREATE POLICY "Public Access for Saree Images" 
+ON storage.objects FOR SELECT 
+USING (bucket_id = 'saree-images');
+
+CREATE POLICY "Admin Upload Saree Images" 
+ON storage.objects FOR INSERT 
+TO authenticated 
+WITH CHECK (bucket_id = 'saree-images' AND public.is_admin());
+
+CREATE POLICY "Admin Update Saree Images" 
+ON storage.objects FOR UPDATE 
+TO authenticated 
+USING (bucket_id = 'saree-images' AND public.is_admin()) 
+WITH CHECK (bucket_id = 'saree-images' AND public.is_admin());
+
+CREATE POLICY "Admin Delete Saree Images" 
+ON storage.objects FOR DELETE 
+TO authenticated 
+USING (bucket_id = 'saree-images' AND public.is_admin());
+
+-- Collection PDFs: Public can view, only Verified Admins can upload/modify/delete
+CREATE POLICY "Public Access for Collection PDFs" 
+ON storage.objects FOR SELECT 
+USING (bucket_id = 'collection-pdfs');
+
+CREATE POLICY "Admin Upload Collection PDFs" 
+ON storage.objects FOR INSERT 
+TO authenticated 
+WITH CHECK (bucket_id = 'collection-pdfs' AND public.is_admin());
+
+CREATE POLICY "Admin Update Collection PDFs" 
+ON storage.objects FOR UPDATE 
+TO authenticated 
+USING (bucket_id = 'collection-pdfs' AND public.is_admin()) 
+WITH CHECK (bucket_id = 'collection-pdfs' AND public.is_admin());
+
+CREATE POLICY "Admin Delete Collection PDFs" 
+ON storage.objects FOR DELETE 
+TO authenticated 
+USING (bucket_id = 'collection-pdfs' AND public.is_admin());
+
+-- Sarees Storage Bucket (Preserved: Public can view, only Verified Admins can upload/modify/delete)
+CREATE POLICY "Public Access for Sarees Bucket" 
+ON storage.objects FOR SELECT 
+USING (bucket_id = 'sarees');
+
+CREATE POLICY "Admin Upload Sarees Bucket" 
+ON storage.objects FOR INSERT 
+TO authenticated 
+WITH CHECK (bucket_id = 'sarees' AND public.is_admin());
+
+CREATE POLICY "Admin Update Sarees Bucket" 
+ON storage.objects FOR UPDATE 
+TO authenticated 
+USING (bucket_id = 'sarees' AND public.is_admin()) 
+WITH CHECK (bucket_id = 'sarees' AND public.is_admin());
+
+CREATE POLICY "Admin Delete Sarees Bucket" 
+ON storage.objects FOR DELETE 
+TO authenticated 
+USING (bucket_id = 'sarees' AND public.is_admin());
+
+-- ------------------------------------------------------------------------------
+-- 9. Secure Database Table Policies (RBAC Enforced)
+-- Customers: Read-only access to published content & validated enquiry submission
+-- Verified Administrators: Full catalog management
+-- ------------------------------------------------------------------------------
+
+-- Collections
+CREATE POLICY "Public can view active collections" 
+ON public.collections FOR SELECT 
+USING (status = 'active' OR (auth.role() = 'authenticated' AND public.is_admin()));
+
+CREATE POLICY "Admins have full access to collections" 
+ON public.collections FOR ALL 
+TO authenticated 
+USING (public.is_admin()) 
+WITH CHECK (public.is_admin());
+
+-- Albums
+CREATE POLICY "Public can view active albums" 
+ON public.albums FOR SELECT 
+USING (status = 'active' OR (auth.role() = 'authenticated' AND public.is_admin()));
+
+CREATE POLICY "Admins have full access to albums" 
+ON public.albums FOR ALL 
+TO authenticated 
+USING (public.is_admin()) 
+WITH CHECK (public.is_admin());
+
+-- Shop Settings
+CREATE POLICY "Public can view shop settings" 
+ON public.shop_settings FOR SELECT 
+USING (true);
+
+CREATE POLICY "Admins have full access to shop settings" 
+ON public.shop_settings FOR ALL 
+TO authenticated 
+USING (public.is_admin()) 
+WITH CHECK (public.is_admin());
+
+-- Homepage Content
+CREATE POLICY "Public can view homepage content" 
+ON public.homepage_content FOR SELECT 
+USING (true);
+
+CREATE POLICY "Admins have full access to homepage content" 
+ON public.homepage_content FOR ALL 
+TO authenticated 
+USING (public.is_admin()) 
+WITH CHECK (public.is_admin());
+
+-- About Content
+CREATE POLICY "Public can view about content" 
+ON public.about_content FOR SELECT 
+USING (true);
+
+CREATE POLICY "Admins have full access to about content" 
+ON public.about_content FOR ALL 
+TO authenticated 
+USING (public.is_admin()) 
+WITH CHECK (public.is_admin());
+
+-- Process Steps
+CREATE POLICY "Public can view active process steps" 
+ON public.process_steps FOR SELECT 
+USING (is_active = true OR (auth.role() = 'authenticated' AND public.is_admin()));
+
+CREATE POLICY "Admins have full access to process steps" 
+ON public.process_steps FOR ALL 
+TO authenticated 
+USING (public.is_admin()) 
+WITH CHECK (public.is_admin());
+
+-- Customer Enquiries (Public insert with strict anti-spam check; Verified Admin read/manage)
+-- Enforces status = 'new' (status cannot be NULL, contacted, or resolved)
+-- Public users have ZERO select, update, or delete privileges on enquiries
+CREATE POLICY "Public can submit validated enquiries" 
+ON public.enquiries FOR INSERT 
+WITH CHECK (
+  status = 'new'
+  AND customer_name IS NOT NULL AND length(trim(customer_name)) >= 2 AND length(customer_name) <= 100
+  AND phone IS NOT NULL AND length(trim(phone)) >= 7 AND length(phone) <= 20
+  AND message IS NOT NULL AND length(trim(message)) >= 2 AND length(message) <= 2000
+);
+
+CREATE POLICY "Admins have full access to enquiries" 
+ON public.enquiries FOR ALL 
+TO authenticated 
+USING (public.is_admin()) 
+WITH CHECK (public.is_admin());
+
+-- Private Admin Settings Table (Only verified administrators have access; completely hidden from public)
+CREATE POLICY "Admins have full access to private_admin_settings" 
+ON public.private_admin_settings FOR ALL 
+TO authenticated 
+USING (public.is_admin()) 
+WITH CHECK (public.is_admin());
+
+-- Admin Users Table (Hierarchical RBAC: Admins can view roster; ONLY Super Admin can manage)
+CREATE POLICY "Admins can view admin_users" 
+ON public.admin_users FOR SELECT 
+TO authenticated 
+USING (public.is_admin());
+
+CREATE POLICY "Super admins can manage admin_users" 
+ON public.admin_users FOR ALL 
+TO authenticated 
+USING (public.is_super_admin()) 
+WITH CHECK (public.is_super_admin());
+
+-- Standalone Sarees Table (Preserved: Public can view, only Verified Admins have full access)
+CREATE POLICY "Public can view sarees" 
+ON public.sarees FOR SELECT 
+USING (true);
+
+CREATE POLICY "Admins have full access to sarees" 
+ON public.sarees FOR ALL 
+TO authenticated 
+USING (public.is_admin()) 
+WITH CHECK (public.is_admin());
+
+-- Legacy Sares Table (Preserved: Public can view, only Verified Admins have full access)
+CREATE POLICY "Public can view Sares" 
+ON public."Sares" FOR SELECT 
+USING (true);
+
+CREATE POLICY "Admins have full access to Sares" 
+ON public."Sares" FOR ALL 
+TO authenticated 
+USING (public.is_admin()) 
+WITH CHECK (public.is_admin());
+
+-- ------------------------------------------------------------------------------
+-- 10. Explicit Table Permissions & Grants (Defense-in-Depth)
+-- Enforces least-privilege table grants in addition to Row Level Security
+-- ------------------------------------------------------------------------------
+GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
+
+-- Public read-only tables: anon can SELECT (RLS filters active vs hidden)
+GRANT SELECT ON public.shop_settings TO anon, authenticated;
+GRANT SELECT ON public.homepage_content TO anon, authenticated;
+GRANT SELECT ON public.about_content TO anon, authenticated;
+GRANT SELECT ON public.process_steps TO anon, authenticated;
+GRANT SELECT ON public.collections TO anon, authenticated;
+GRANT SELECT ON public.albums TO anon, authenticated;
+GRANT SELECT ON public.sarees TO anon, authenticated;
+GRANT SELECT ON public."Sares" TO anon, authenticated;
+
+-- Customer Enquiries: anon can INSERT only (RLS enforces strict anti-spam)
+GRANT INSERT ON public.enquiries TO anon;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.enquiries TO authenticated;
+
+-- Private Tables: anon has ZERO permissions
+REVOKE ALL ON public.private_admin_settings FROM anon;
+REVOKE ALL ON public.admin_users FROM anon;
+
+-- Admin Tables: authenticated users access governed strictly by RLS admin functions
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.shop_settings TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.homepage_content TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.about_content TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.process_steps TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.collections TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.albums TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.sarees TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public."Sares" TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.private_admin_settings TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.admin_users TO authenticated;
+
+-- Service Role retains full bypass access
+GRANT ALL ON ALL TABLES IN SCHEMA public TO service_role;
+

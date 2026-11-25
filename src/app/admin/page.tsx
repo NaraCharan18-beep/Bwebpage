@@ -54,6 +54,7 @@ import {
   initialCollections, 
   initialAlbums 
 } from '@/lib/seed-data';
+import { signOutAdmin, getAdminUser } from '@/lib/supabase';
 
 export default function AdminPage() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
@@ -86,6 +87,14 @@ export default function AdminPage() {
       const auth = sessionStorage.getItem('pochampally_admin_auth');
       if (auth === 'true') {
         setIsAuthenticated(true);
+      } else {
+        // Auto-detect active Supabase session
+        getAdminUser().then((user) => {
+          if (user) {
+            sessionStorage.setItem('pochampally_admin_auth', 'true');
+            setIsAuthenticated(true);
+          }
+        }).catch(() => {});
       }
     }
   }, []);
@@ -121,9 +130,12 @@ export default function AdminPage() {
     }
   }, [isAuthenticated]);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     if (typeof window !== 'undefined') {
       sessionStorage.removeItem('pochampally_admin_auth');
+      try {
+        await signOutAdmin();
+      } catch {}
       setIsAuthenticated(false);
     }
   };

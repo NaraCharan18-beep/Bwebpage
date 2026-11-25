@@ -1,8 +1,8 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Image from 'next/image';
-import { Sparkles, ArrowRight, ShieldCheck } from 'lucide-react';
+import { Sparkles, ArrowRight, ShieldCheck, ChevronLeft, ChevronRight } from 'lucide-react';
 import { HomepageContent, ShopSettings } from '@/lib/types';
 
 interface HeroSectionProps {
@@ -11,12 +11,57 @@ interface HeroSectionProps {
 }
 
 export default function HeroSection({ content, settings }: HeroSectionProps) {
+  const [currentSlide, setCurrentSlide] = useState(0);
+  const [isHovered, setIsHovered] = useState(false);
+
+  // Build the list of hero images with the new model image prioritized
+  const heroImages = useMemo(() => {
+    const list: string[] = [];
+    if (content.hero_image_url) {
+      list.push(content.hero_image_url);
+    }
+    if (content.hero_images && Array.isArray(content.hero_images)) {
+      for (const img of content.hero_images) {
+        if (img && !list.includes(img)) {
+          list.push(img);
+        }
+      }
+    }
+    // Default fallback list
+    if (!list.includes('/images/hero_saree_model.jpg')) {
+      list.unshift('/images/hero_saree_model.jpg');
+    }
+    if (!list.includes('/images/hero_saree.jpg')) {
+      list.push('/images/hero_saree.jpg');
+    }
+    return list;
+  }, [content.hero_image_url, content.hero_images]);
+
+  // Auto-advance hero slides every 5 seconds (pauses when hovering)
+  useEffect(() => {
+    if (heroImages.length <= 1 || isHovered) return;
+    const interval = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % heroImages.length);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [heroImages.length, isHovered]);
+
   const handleScrollToCollections = (e: React.MouseEvent) => {
     e.preventDefault();
     const elem = document.getElementById('collections');
     if (elem) {
       elem.scrollIntoView({ behavior: 'smooth' });
     }
+  };
+
+  const nextSlide = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setCurrentSlide((prev) => (prev + 1) % heroImages.length);
+  };
+
+  const prevSlide = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setCurrentSlide((prev) => (prev - 1 + heroImages.length) % heroImages.length);
   };
 
   return (
@@ -85,29 +130,85 @@ export default function HeroSection({ content, settings }: HeroSectionProps) {
             </div>
           </div>
 
-          {/* Right Column: Hero Visual Frame */}
+          {/* Right Column: Hero Visual Frame & Multi-Hero Carousel */}
           <div className="lg:col-span-5 relative">
-            <div className="relative mx-auto max-w-md lg:max-w-none">
+            <div 
+              className="relative mx-auto max-w-md lg:max-w-none group"
+              onMouseEnter={() => setIsHovered(true)}
+              onMouseLeave={() => setIsHovered(false)}
+            >
               {/* Outer Golden Border Offset Frame */}
               <div className="absolute inset-0 border-2 border-[#D4AF37] rounded-3xl translate-x-3 translate-y-3 -z-10 hidden sm:block"></div>
 
               {/* Main Saree Image Container */}
-              <div className="relative aspect-[3/4] sm:aspect-[4/5] rounded-2xl overflow-hidden shadow-2xl bg-[#E7DFD5] border-4 border-white">
-                <Image
-                  src={content.hero_image_url || '/images/hero_saree.jpg'}
-                  alt={content.hero_title || 'Authentic Pochampally Silk Saree'}
-                  fill
-                  priority
-                  unoptimized
-                  className="object-cover object-top hover:scale-105 transition-transform duration-700"
-                  sizes="(max-width: 768px) 100vw, 45vw"
-                />
+              <div className="relative aspect-[3/4] sm:aspect-[4/5] rounded-2xl overflow-hidden shadow-2xl bg-[#E7DFD5] border-4 border-white select-none">
+                {/* Cross-fading Hero Images */}
+                {heroImages.map((imgSrc, idx) => (
+                  <div
+                    key={imgSrc + idx}
+                    className={`absolute inset-0 transition-opacity duration-700 ease-in-out ${
+                      idx === currentSlide ? 'opacity-100 z-10' : 'opacity-0 pointer-events-none z-0'
+                    }`}
+                  >
+                    <Image
+                      src={imgSrc}
+                      alt={`${content.hero_title || 'Authentic Pochampally Silk Saree'} - Hero ${idx + 1}`}
+                      fill
+                      priority={idx === 0}
+                      unoptimized
+                      className="object-cover object-top hover:scale-105 transition-transform duration-700"
+                      sizes="(max-width: 768px) 100vw, 45vw"
+                    />
+                  </div>
+                ))}
 
-                {/* Gradient Overlay for subtle depth */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent"></div>
+                {/* Subtle Gradient Overlay for depth */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/20 z-10 pointer-events-none"></div>
+
+                {/* Carousel Controls (when multiple hero images exist) */}
+                {heroImages.length > 1 && (
+                  <>
+                    {/* Previous Button */}
+                    <button
+                      type="button"
+                      onClick={prevSlide}
+                      aria-label="Previous hero image"
+                      className="absolute left-3 top-1/2 -translate-y-1/2 z-20 w-9 h-9 rounded-full bg-black/40 hover:bg-[#800020] text-white backdrop-blur-md flex items-center justify-center transition-all duration-300 opacity-90 sm:opacity-0 group-hover:opacity-100 border border-white/20 shadow-lg cursor-pointer"
+                    >
+                      <ChevronLeft className="w-5 h-5" />
+                    </button>
+
+                    {/* Next Button */}
+                    <button
+                      type="button"
+                      onClick={nextSlide}
+                      aria-label="Next hero image"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 z-20 w-9 h-9 rounded-full bg-black/40 hover:bg-[#800020] text-white backdrop-blur-md flex items-center justify-center transition-all duration-300 opacity-90 sm:opacity-0 group-hover:opacity-100 border border-white/20 shadow-lg cursor-pointer"
+                    >
+                      <ChevronRight className="w-5 h-5" />
+                    </button>
+
+                    {/* Slide Indicator Dots at Top Right */}
+                    <div className="absolute top-4 right-4 z-20 flex items-center gap-1.5 bg-black/40 backdrop-blur-md px-2.5 py-1 rounded-full border border-white/20">
+                      {heroImages.map((_, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => setCurrentSlide(idx)}
+                          aria-label={`Show hero slide ${idx + 1}`}
+                          className={`h-2 rounded-full transition-all duration-300 cursor-pointer ${
+                            idx === currentSlide
+                              ? 'w-6 bg-[#D4AF37]'
+                              : 'w-2 bg-white/60 hover:bg-white'
+                          }`}
+                        />
+                      ))}
+                    </div>
+                  </>
+                )}
 
                 {/* Floating Authentic Handloom Seal */}
-                <div className="absolute bottom-4 left-4 right-4 bg-white/95 backdrop-blur-md p-3.5 rounded-xl border border-[#D4AF37]/50 shadow-lg flex items-center justify-between">
+                <div className="absolute bottom-4 left-4 right-4 bg-white/95 backdrop-blur-md p-3.5 rounded-xl border border-[#D4AF37]/50 shadow-lg flex items-center justify-between z-20">
                   <div>
                     <span className="block text-[10px] uppercase tracking-wider text-[#A67C1E] font-bold">
                       Bhoodan Pochampally

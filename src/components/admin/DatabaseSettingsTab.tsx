@@ -64,7 +64,7 @@ export default function DatabaseSettingsTab() {
       return;
     }
     try {
-      const { data, error } = await client.from('shop_sections').select('count', { count: 'exact', head: true });
+      const { data, error } = await client.from('collections').select('id', { count: 'exact', head: true });
       if (error) {
         setTestResult(`Connection response: ${error.message} (Make sure you ran the SQL migration schema in Supabase).`);
       } else {

@@ -70,6 +70,7 @@ export default function HomepageTab({ homepage, onSaveHomepage }: HomepageTabPro
       const updatedForm: HomepageContent = {
         ...form,
         hero_image_url: url,
+        hero_images: form.hero_images ? [url, ...form.hero_images.filter(x => x !== url)] : [url, '/images/hero_saree_model.jpg', '/images/hero_saree.jpg'],
       };
 
       setForm(updatedForm);
@@ -97,6 +98,7 @@ export default function HomepageTab({ homepage, onSaveHomepage }: HomepageTabPro
     const updatedForm: HomepageContent = {
       ...form,
       hero_image_url: saree.image_url,
+      hero_images: form.hero_images ? [saree.image_url, ...form.hero_images.filter(x => x !== saree.image_url)] : [saree.image_url, '/images/hero_saree_model.jpg'],
     };
     setForm(updatedForm);
     setShowCatalogPicker(false);
@@ -122,7 +124,8 @@ export default function HomepageTab({ homepage, onSaveHomepage }: HomepageTabPro
   const handleResetToDefault = async () => {
     const updatedForm: HomepageContent = {
       ...form,
-      hero_image_url: '/images/hero_saree.jpg',
+      hero_image_url: '/images/hero_saree_model.jpg',
+      hero_images: ['/images/hero_saree_model.jpg', '/images/hero_saree.jpg'],
     };
     setForm(updatedForm);
     setIsUploading(true);
@@ -255,23 +258,55 @@ export default function HomepageTab({ homepage, onSaveHomepage }: HomepageTabPro
 
           <div className="grid grid-cols-1 sm:grid-cols-12 gap-5 items-start">
             {/* Image Preview Container */}
-            <div className="sm:col-span-5 relative aspect-[3/4] sm:aspect-[4/5] rounded-2xl overflow-hidden bg-stone-100 border-2 border-[#D4AF37]/40 shadow-md">
-              <Image
-                src={form.hero_image_url || '/images/hero_saree.jpg'}
-                alt="Hero banner preview"
-                fill
-                unoptimized
-                className="object-cover object-top"
-              />
-              {isUploading && (
-                <div className="absolute inset-0 bg-black/50 backdrop-blur-xs flex flex-col items-center justify-center text-white gap-2 p-4 text-center">
-                  <div className="w-7 h-7 border-3 border-white border-t-transparent rounded-full animate-spin"></div>
-                  <span className="text-xs font-bold">Compressing & Publishing Live...</span>
+            <div className="sm:col-span-5 space-y-3">
+              <div className="relative aspect-[3/4] sm:aspect-[4/5] rounded-2xl overflow-hidden bg-stone-100 border-2 border-[#D4AF37]/40 shadow-md">
+                <Image
+                  src={form.hero_image_url || '/images/hero_saree_model.jpg'}
+                  alt="Hero banner preview"
+                  fill
+                  unoptimized
+                  className="object-cover object-top"
+                />
+                {isUploading && (
+                  <div className="absolute inset-0 bg-black/50 backdrop-blur-xs flex flex-col items-center justify-center text-white gap-2 p-4 text-center">
+                    <div className="w-7 h-7 border-3 border-white border-t-transparent rounded-full animate-spin"></div>
+                    <span className="text-xs font-bold">Compressing & Publishing Live...</span>
+                  </div>
+                )}
+                <div className="absolute top-2.5 left-2.5 bg-black/60 backdrop-blur-xs text-white text-[10px] font-bold px-2 py-0.5 rounded-md">
+                  Live Preview
+                </div>
+              </div>
+
+              {/* Quick Switcher among active hero slides */}
+              {((form.hero_images && form.hero_images.length > 0) ? form.hero_images : ['/images/hero_saree_model.jpg', '/images/hero_saree.jpg']).length > 1 && (
+                <div className="p-2.5 bg-[#FAF7F2] rounded-xl border border-[#E7DFD5] space-y-1.5">
+                  <span className="text-[10px] font-bold text-stone-600 uppercase tracking-wider block">
+                    Active Hero Slides (Click to set primary):
+                  </span>
+                  <div className="flex gap-2">
+                    {((form.hero_images && form.hero_images.length > 0) ? form.hero_images : ['/images/hero_saree_model.jpg', '/images/hero_saree.jpg']).map((img, i) => {
+                      const isCurrent = (form.hero_image_url || '/images/hero_saree_model.jpg') === img;
+                      return (
+                        <button
+                          key={i}
+                          type="button"
+                          onClick={async () => {
+                            const updated = { ...form, hero_image_url: img };
+                            setForm(updated);
+                            await onSaveHomepage(updated);
+                          }}
+                          className={`relative w-12 h-14 rounded-lg overflow-hidden border-2 transition-all cursor-pointer ${
+                            isCurrent ? 'border-[#800020] ring-2 ring-[#800020]/40 scale-105' : 'border-stone-300 opacity-70 hover:opacity-100'
+                          }`}
+                        >
+                          <Image src={img} alt="Hero slide" fill unoptimized className="object-cover object-top" />
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
-              <div className="absolute top-2.5 left-2.5 bg-black/60 backdrop-blur-xs text-white text-[10px] font-bold px-2 py-0.5 rounded-md">
-                Live Preview
-              </div>
             </div>
 
             {/* Upload controls */}
@@ -300,7 +335,7 @@ export default function HomepageTab({ homepage, onSaveHomepage }: HomepageTabPro
                   </button>
                 )}
 
-                {form.hero_image_url && form.hero_image_url !== '/images/hero_saree.jpg' && (
+                {form.hero_image_url && form.hero_image_url !== '/images/hero_saree_model.jpg' && (
                   <button
                     type="button"
                     onClick={handleResetToDefault}

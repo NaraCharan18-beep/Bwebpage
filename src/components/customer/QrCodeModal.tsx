@@ -129,21 +129,21 @@ export default function QrCodeModal({
         {activeTab === 'website' && (
           <div className="space-y-4 animate-in fade-in duration-200">
             <div className="bg-white rounded-2xl p-3 sm:p-4 shadow-sm border border-[#E7DFD5]">
-              <div className="p-3 bg-white rounded-xl shadow-inner border-2 border-dashed border-[#D4AF37] inline-block">
+              <div className="p-2 bg-gradient-to-br from-[#FAF7F2] to-white rounded-xl shadow-xs border-2 border-[#D4AF37] max-w-[340px] mx-auto overflow-hidden">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src="/images/visiting_card_qr.jpg"
-                  alt="Showroom Visiting Card Back QR Code"
-                  className="w-48 h-48 sm:w-52 sm:h-52 mx-auto object-contain block"
+                  alt="SRI LAXMI NARSHIMA SARES HOUSE Business Visiting Card QR"
+                  className="w-full h-auto object-contain rounded-lg block mx-auto shadow-xs"
                 />
               </div>
 
               <div className="mt-3 flex items-center justify-center gap-1.5 text-xs font-bold text-[#800020]">
                 <Smartphone className="w-3.5 h-3.5 text-[#D4AF37]" />
-                <span>Showroom Visiting Card QR</span>
+                <span>Visiting Card • Scan QR to Check Out Our Collection</span>
               </div>
               <p className="text-[11px] text-stone-600 mt-0.5 leading-relaxed">
-                Scan with any mobile camera to open our live digital saree showroom:
+                Scan with any phone camera to open our live digital saree showroom:
               </p>
               <div className="mt-1.5 px-2.5 py-1.5 bg-[#FAF7F2] rounded-lg border border-[#E7DFD5] text-[11px] font-mono font-medium text-[#800020] truncate">
                 {websiteUrl}
@@ -175,11 +175,11 @@ export default function QrCodeModal({
             <div className="flex gap-2">
               <a
                 href="/images/visiting_card_qr.jpg"
-                download="visiting-card-back-qr.jpg"
+                download="charan-visiting-card-qr.jpg"
                 className="flex-1 py-2 px-3 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 text-[11px] font-semibold flex items-center justify-center gap-1.5 transition-colors"
               >
                 <Download className="w-3.5 h-3.5" />
-                <span>Download QR Image</span>
+                <span>Download Visiting Card</span>
               </a>
 
               <button

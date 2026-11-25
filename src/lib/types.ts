@@ -164,6 +164,7 @@ export interface HomepageContent {
   hero_subtitle: string;
   hero_description: string;
   hero_image_url: string;
+  hero_images?: string[];
   hero_badge: string;
   explore_btn_text: string;
   contact_btn_text: string;

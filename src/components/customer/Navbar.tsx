@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { 
   Phone, 
   MessageCircle, 
-  QrCode,
   Menu, 
   X, 
   MapPin, 
@@ -16,10 +15,9 @@ import { ShopSettings } from '@/lib/types';
 
 interface NavbarProps {
   settings: ShopSettings;
-  onOpenQr?: () => void;
 }
 
-export default function Navbar({ settings, onOpenQr }: NavbarProps) {
+export default function Navbar({ settings }: NavbarProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Recommended clean navigation: Home | Collections | Heritage | Contact
@@ -85,22 +83,10 @@ export default function Navbar({ settings, onOpenQr }: NavbarProps) {
 
             {/* Header Actions */}
             <div className="flex items-center gap-2 sm:gap-3">
-              {/* Preserved Visiting Card QR Code Button */}
-              {onOpenQr && (
-                <button
-                  onClick={onOpenQr}
-                  title="Show Visiting Card & WhatsApp QR Codes"
-                  className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-[#800020] bg-white border border-[#D4AF37] rounded-full hover:bg-[#800020] hover:text-white transition-all shadow-xs cursor-pointer"
-                >
-                  <QrCode className="w-4 h-4 text-[#D4AF37]" />
-                  <span className="hidden sm:inline">Visiting & WhatsApp QR</span>
-                </button>
-              )}
-
               {/* WhatsApp Quick Action */}
               <a
                 href={`https://wa.me/${settings.whatsapp}?text=${encodeURIComponent(
-                  `Hello ${settings.shop_name}, I am visiting your website and would like assistance viewing your Pochampally saree collections.`
+                  `Hello ${settings.shop_name}, I am visiting your website catalogue and would like assistance viewing your Pochampally saree collections.`
                 )}`}
                 target="_blank"
                 rel="noopener noreferrer"
@@ -158,17 +144,6 @@ export default function Navbar({ settings, onOpenQr }: NavbarProps) {
             ))}
             
             <div className="pt-3 border-t border-[#E7DFD5] flex flex-col gap-2">
-              {onOpenQr && (
-                <button
-                  onClick={() => {
-                    onOpenQr();
-                    setMobileMenuOpen(false);
-                  }}
-                  className="flex items-center gap-2 px-3 py-2 text-sm text-[#800020] font-bold text-left cursor-pointer"
-                >
-                  <QrCode className="w-4 h-4 text-[#D4AF37]" /> Show Visiting & WhatsApp QRs
-                </button>
-              )}
               <a
                 href={`tel:${settings.phone}`}
                 className="flex items-center gap-2 px-3 py-2 text-sm text-[#800020] font-bold"

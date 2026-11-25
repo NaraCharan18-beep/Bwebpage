@@ -23,8 +23,10 @@ import {
   ArrowDown,
   RefreshCw,
   Tag,
-  Layers
+  Layers,
+  FileText
 } from 'lucide-react';
+import PdfCollectionModal from './PdfCollectionModal';
 import { Collection, Album, SareeItem } from '@/lib/types';
 import { uploadSareeImage } from '@/lib/supabase';
 import { 
@@ -70,6 +72,9 @@ export default function CollectionsManagerTab({
   
   // Saree editing modal
   const [editingSaree, setEditingSaree] = useState<SareeItem | null>(null);
+
+  // PDF Collection Import Modal
+  const [isPdfModalOpen, setIsPdfModalOpen] = useState(false);
 
   // Delete confirmation modal
   const [deleteConfirmTarget, setDeleteConfirmTarget] = useState<{
@@ -185,8 +190,9 @@ export default function CollectionsManagerTab({
       if (!newColCoverImage && uploadedList.length > 0) {
         setNewColCoverImage(uploadedList[0].url);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Upload error:', err);
+      alert(`Photo upload failed: ${err?.message || 'Failed to upload photo. Check permissions and storage bucket.'}`);
     } finally {
       setIsCreateUploading(false);
       setCreateUploadProgress('');
@@ -311,9 +317,9 @@ export default function CollectionsManagerTab({
       if (cleanName && cleanName.length > 2) {
         setSingleSareeName(cleanName);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Single photo upload failed:', err);
-      alert('Photo upload failed. Please try another image.');
+      alert(`Photo upload failed: ${err?.message || 'Please ensure you are signed in as verified administrator and bucket "saree-images" exists.'}`);
     } finally {
       setIsSingleUploading(false);
       e.target.value = '';
@@ -408,6 +414,21 @@ export default function CollectionsManagerTab({
   return (
     <div className="space-y-6">
       
+      {/* Permanent Digital Catalogue Notice Banner */}
+      <div className="bg-[#FAF7F2] p-4 rounded-2xl border border-[#D4AF37]/50 shadow-xs flex items-start gap-3">
+        <div className="w-9 h-9 rounded-xl bg-[#800020]/10 text-[#800020] flex items-center justify-center shrink-0 mt-0.5">
+          <Images className="w-5 h-5 text-[#800020]" />
+        </div>
+        <div>
+          <h2 className="font-serif text-sm font-bold text-[#800020]">
+            Permanent Digital Saree Catalogue
+          </h2>
+          <p className="text-xs text-stone-600 mt-0.5 leading-relaxed">
+            Upload your collection photographs once. They remain permanently in your online catalogue for customers to browse. No inventory or stock updating workflows required — stock availability and current prices are communicated personally through WhatsApp.
+          </p>
+        </div>
+      </div>
+
       {/* Top Header & Actions */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-[#E7DFD5] shadow-xs">
         <div>
@@ -421,6 +442,16 @@ export default function CollectionsManagerTab({
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Import from PDF Catalog Button */}
+          <button
+            type="button"
+            onClick={() => setIsPdfModalOpen(true)}
+            className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#D4AF37] to-[#C29B27] hover:brightness-105 text-stone-900 text-xs font-bold shadow-md flex items-center gap-2 transition-all hover:scale-[1.02] cursor-pointer"
+          >
+            <FileText className="w-4 h-4 text-stone-900" />
+            <span>📄 Import from PDF</span>
+          </button>
+
           {/* Create Collection Button (Requirement #4) */}
           <button
             onClick={handleOpenCreateModal}
@@ -868,8 +899,54 @@ export default function CollectionsManagerTab({
               );
             })}
           </div>
+
+          {filteredCollections.length === 0 && (
+            <div className="text-center py-16 bg-white rounded-2xl border border-dashed border-[#D4AF37]/60 p-8 space-y-4">
+              <div className="w-16 h-16 rounded-full bg-[#800020]/10 flex items-center justify-center mx-auto text-[#800020]">
+                <FolderTree className="w-8 h-8 text-[#800020]" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="font-serif text-lg font-bold text-[#1C1917]">
+                  {searchQuery ? 'No matching collections found' : 'No Saree Collections Yet'}
+                </h3>
+                <p className="text-xs text-stone-500 max-w-sm mx-auto">
+                  {searchQuery
+                    ? `No collections match "${searchQuery}". Clear your search query.`
+                    : 'Your showroom catalogue is clean and ready. Click "+ Create Collection" or import a PDF catalogue to add your first sarees!'}
+                </p>
+              </div>
+              <div className="flex items-center justify-center gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsPdfModalOpen(true)}
+                  className="px-4 py-2 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 text-xs font-bold border border-amber-200 transition-colors cursor-pointer"
+                >
+                  📄 Import from PDF
+                </button>
+                <button
+                  type="button"
+                  onClick={handleOpenCreateModal}
+                  className="px-5 py-2.5 rounded-xl bg-[#800020] hover:bg-[#660019] text-white text-xs font-bold shadow-md transition-all cursor-pointer flex items-center gap-1.5"
+                >
+                  <Plus className="w-4 h-4 text-[#D4AF37]" />
+                  <span>+ Create First Collection</span>
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
+
+      {/* PDF Collection Import Modal */}
+      <PdfCollectionModal
+        isOpen={isPdfModalOpen}
+        onClose={() => setIsPdfModalOpen(false)}
+        existingCollections={collections}
+        onSuccess={(col) => {
+          onRefresh?.();
+          setSelectedCollectionId(col.id);
+        }}
+      />
 
       {/* ======================================================== */}
       {/* MODAL 1: + CREATE COLLECTION (Requirement #4 & #18) */}

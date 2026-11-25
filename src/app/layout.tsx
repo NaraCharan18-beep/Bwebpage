@@ -41,7 +41,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "SRI LAXMI NARSHIMA SARES HOUSE",
     description: "Where Tradition Meets Timeless Elegance • Handcrafted Pochampally Silk Direct From Weavers",
-    images: [{ url: "/images/hero_saree.jpg" }],
+    images: [{ url: "/images/hero_saree_model.jpg" }],
   },
 };
 

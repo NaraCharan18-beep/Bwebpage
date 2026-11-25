@@ -85,13 +85,13 @@ export default function SareeDetailModal({
   };
 
   // WhatsApp Enquiry message pre-filled according to Requirement #8
-  const whatsappMessage = `Hello ${settings.shop_name}, I am interested in this saree from your website:
+  const whatsappMessage = `Hello ${settings.shop_name}, I am viewing your permanent digital saree catalogue on your website and am interested in this piece:
 
 • Collection: ${collectionName}
 • Saree Code: ${saree.code || `Saree #${currentIndex + 1}`}
-• Name: ${saree.name}
+• Saree Name: ${saree.name}
 
-Could you please share price, availability, and ordering details? Thank you!`;
+Could you please share the current price, availability, and ordering details? Thank you!`;
 
   const whatsappUrl = `https://wa.me/${settings.whatsapp}?text=${encodeURIComponent(whatsappMessage)}`;
 
@@ -203,21 +203,14 @@ Could you please share price, availability, and ordering details? Thank you!`;
               </button>
             </div>
 
-            {/* Saree Code Badge */}
+            {/* Saree Code & Permanent Catalogue Tag */}
             <div className="flex items-center gap-2">
               <span className="inline-block px-3 py-1 bg-[#800020] text-[#FAF7F2] font-mono font-bold text-xs rounded-full shadow-xs">
                 Code: {saree.code || `S-${currentIndex + 1}`}
               </span>
-              {saree.availability === 'available' ? (
-                <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse"></span>
-                  In Stock
-                </span>
-              ) : (
-                <span className="text-[11px] font-semibold text-stone-600 bg-stone-100 px-2.5 py-0.5 rounded-full">
-                  Handloom Made-to-Order
-                </span>
-              )}
+              <span className="text-[11px] font-medium text-stone-600 bg-stone-100 px-2.5 py-0.5 rounded-full border border-stone-200">
+                Permanent Catalogue
+              </span>
             </div>
 
             {/* Saree Title */}
@@ -225,15 +218,15 @@ Could you please share price, availability, and ordering details? Thank you!`;
               {saree.name}
             </h2>
 
-            {/* Optional Price Display */}
-            {saree.show_price && saree.price ? (
-              <div className="flex items-baseline gap-2 pt-1">
-                <span className="font-serif text-2xl font-bold text-[#800020]">
-                  ₹{saree.price.toLocaleString('en-IN')}
-                </span>
-                <span className="text-xs text-stone-500 font-medium">Direct Weaver Price</span>
-              </div>
-            ) : null}
+            {/* Availability & Direct Weaver Pricing Notice */}
+            <div className="p-3 bg-[#FAF7F2] rounded-xl border border-[#E7DFD5] space-y-1">
+              <span className="block text-xs font-bold text-[#800020]">
+                Price & Availability via WhatsApp
+              </span>
+              <p className="text-[11px] text-stone-600 leading-relaxed">
+                As an authentic handloom weaver catalogue, current weaving status, custom color options, and pricing are communicated personally by the owner on WhatsApp.
+              </p>
+            </div>
 
             {/* Description */}
             {saree.description && (

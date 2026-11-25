@@ -1,15 +1,14 @@
 'use client';
 
 import React from 'react';
-import { MapPin, Phone, MessageCircle, Clock, Navigation, ExternalLink, QrCode } from 'lucide-react';
+import { MapPin, Phone, MessageCircle, Clock, Navigation, ExternalLink } from 'lucide-react';
 import { ShopSettings } from '@/lib/types';
 
 interface StoreInfoSectionProps {
   settings: ShopSettings;
-  onOpenQr?: () => void;
 }
 
-export default function StoreInfoSection({ settings, onOpenQr }: StoreInfoSectionProps) {
+export default function StoreInfoSection({ settings }: StoreInfoSectionProps) {
   return (
     <section id="store" className="py-16 md:py-24 bg-[#F4ECE1]/40 border-b border-[#E7DFD5] relative">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -115,18 +114,6 @@ export default function StoreInfoSection({ settings, onOpenQr }: StoreInfoSectio
               <span>Get Google Maps Directions</span>
               <ExternalLink className="w-4 h-4 opacity-75" />
             </a>
-
-            {/* Preserved QR Code Action */}
-            {onOpenQr && (
-              <button
-                type="button"
-                onClick={onOpenQr}
-                className="w-full py-3 px-4 rounded-2xl bg-white border border-[#D4AF37] hover:bg-[#FAF7F2] text-[#800020] font-bold text-xs shadow-xs transition-colors flex items-center justify-center gap-2 cursor-pointer"
-              >
-                <QrCode className="w-4 h-4 text-[#D4AF37]" />
-                <span>Show Visiting Card & WhatsApp QR Codes</span>
-              </button>
-            )}
           </div>
 
           {/* Right Column: Google Maps Interactive Embed Frame */}

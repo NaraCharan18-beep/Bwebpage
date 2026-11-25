@@ -2,9 +2,10 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { Lock, ArrowRight, KeyRound, Home } from 'lucide-react';
+import { Lock, ArrowRight, KeyRound, Home, Mail, ShieldCheck } from 'lucide-react';
 import { ShopSettings } from '@/lib/types';
 import { initialShopSettings } from '@/lib/seed-data';
+import { signInAdmin, isSupabaseConfigured } from '@/lib/supabase';
 
 interface AdminLoginProps {
   settings?: ShopSettings;
@@ -12,26 +13,48 @@ interface AdminLoginProps {
 }
 
 export default function AdminLogin({ settings = initialShopSettings, onLoginSuccess }: AdminLoginProps) {
+  const [authMode, setAuthMode] = useState<'pin' | 'supabase'>('pin');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [pin, setPin] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSupabaseSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
 
-    // Resolve configured password (default: 7579)
+    try {
+      const res = await signInAdmin(email, password);
+      if (res?.error) {
+        setError(res.error.message || 'Invalid administrator email or password.');
+      } else {
+        sessionStorage.setItem('pochampally_admin_auth', 'true');
+        onLoginSuccess();
+      }
+    } catch (err: any) {
+      setError(err.message || 'Failed to authenticate administrator account.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePinSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+
     const getExpectedPin = () => {
       if (typeof window !== 'undefined') {
         const directPin = localStorage.getItem('pochampally_admin_pin');
-        if (directPin && directPin !== 'admin123') return directPin;
+        if (directPin) return directPin;
 
         try {
           const storedSettings = localStorage.getItem('pochampally_shop_settings');
           if (storedSettings) {
             const parsed = JSON.parse(storedSettings);
-            if (parsed.admin_pin && parsed.admin_pin !== 'admin123') {
+            if (parsed.admin_pin) {
               return parsed.admin_pin;
             }
           }
@@ -39,20 +62,20 @@ export default function AdminLogin({ settings = initialShopSettings, onLoginSucc
           // ignore
         }
       }
-      return settings.admin_pin && settings.admin_pin !== 'admin123' ? settings.admin_pin : '7579';
+      return settings.admin_pin || '';
     };
 
     const targetPin = getExpectedPin();
 
     setTimeout(() => {
-      if (pin === targetPin || pin === '7579') {
+      if (targetPin && pin === targetPin) {
         sessionStorage.setItem('pochampally_admin_auth', 'true');
         onLoginSuccess();
       } else {
         setError('Incorrect Admin Password or PIN.');
       }
       setLoading(false);
-    }, 400);
+    }, 300);
   };
 
   return (
@@ -76,48 +99,146 @@ export default function AdminLogin({ settings = initialShopSettings, onLoginSucc
           </p>
         </div>
 
+        {/* Auth Mode Toggle */}
+        <div className="grid grid-cols-2 p-1 bg-stone-200/70 rounded-xl text-xs font-bold">
+          <button
+            type="button"
+            onClick={() => {
+              setAuthMode('supabase');
+              setError('');
+            }}
+            className={`py-2 rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+              authMode === 'supabase'
+                ? 'bg-white text-[#800020] shadow-xs'
+                : 'text-stone-600 hover:text-stone-900'
+            }`}
+          >
+            <ShieldCheck className="w-3.5 h-3.5" />
+            <span>Supabase Auth</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setAuthMode('pin');
+              setError('');
+            }}
+            className={`py-2 rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+              authMode === 'pin'
+                ? 'bg-white text-[#800020] shadow-xs'
+                : 'text-stone-600 hover:text-stone-900'
+            }`}
+          >
+            <KeyRound className="w-3.5 h-3.5" />
+            <span>Showroom PIN</span>
+          </button>
+        </div>
+
         {/* Security Note */}
         <div className="p-3 bg-[#800020]/5 rounded-xl border border-[#800020]/15 flex items-center gap-2.5 text-xs text-[#57534E]">
           <Lock className="w-4 h-4 text-[#800020] shrink-0" />
-          <span>Restricted to showroom owner and authorized personnel.</span>
+          <span>
+            {authMode === 'supabase'
+              ? 'Sign in with your verified Supabase administrator account.'
+              : 'Local showroom PIN authentication mode.'}
+          </span>
         </div>
 
-        {/* Login Form */}
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-xs font-bold text-[#1C1917] uppercase tracking-wider mb-1.5">
-              Enter Admin Password / PIN
-            </label>
-            <div className="relative">
-              <KeyRound className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400" />
-              <input
-                type="password"
-                required
-                value={pin}
-                onChange={(e) => {
-                  setPin(e.target.value);
-                  setError('');
-                }}
-                placeholder="Enter password"
-                className="w-full pl-10 pr-4 py-3 rounded-xl bg-white border border-[#E7DFD5] text-sm text-[#1C1917] focus:outline-none focus:border-[#800020] shadow-xs"
-              />
+        {/* Form: Supabase Auth */}
+        {authMode === 'supabase' ? (
+          <form onSubmit={handleSupabaseSubmit} className="space-y-4">
+            <div>
+              <label className="block text-xs font-bold text-[#1C1917] uppercase tracking-wider mb-1.5">
+                Admin Email
+              </label>
+              <div className="relative">
+                <Mail className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400" />
+                <input
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    setError('');
+                  }}
+                  placeholder="admin@example.com"
+                  className="w-full pl-10 pr-4 py-3 rounded-xl bg-white border border-[#E7DFD5] text-sm text-[#1C1917] focus:outline-none focus:border-[#800020] shadow-xs"
+                />
+              </div>
             </div>
+
+            <div>
+              <label className="block text-xs font-bold text-[#1C1917] uppercase tracking-wider mb-1.5">
+                Password
+              </label>
+              <div className="relative">
+                <Lock className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400" />
+                <input
+                  type="password"
+                  required
+                  value={password}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    setError('');
+                  }}
+                  placeholder="••••••••••••"
+                  className="w-full pl-10 pr-4 py-3 rounded-xl bg-white border border-[#E7DFD5] text-sm text-[#1C1917] focus:outline-none focus:border-[#800020] shadow-xs"
+                />
+              </div>
+            </div>
+
             {error && (
               <p className="text-xs text-rose-600 mt-1.5 font-medium">
                 {error}
               </p>
             )}
-          </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-3.5 px-6 rounded-xl bg-[#800020] hover:bg-[#660019] text-white font-bold text-sm shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-60"
-          >
-            <span>{loading ? 'Authenticating...' : 'Access Dashboard'}</span>
-            <ArrowRight className="w-4 h-4" />
-          </button>
-        </form>
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-3.5 px-6 rounded-xl bg-[#800020] hover:bg-[#660019] text-white font-bold text-sm shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-60"
+            >
+              <span>{loading ? 'Authenticating with Supabase...' : 'Sign In as Administrator'}</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          </form>
+        ) : (
+          /* Form: Showroom PIN */
+          <form onSubmit={handlePinSubmit} className="space-y-4">
+            <div>
+              <label className="block text-xs font-bold text-[#1C1917] uppercase tracking-wider mb-1.5">
+                Showroom PIN
+              </label>
+              <div className="relative">
+                <KeyRound className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400" />
+                <input
+                  type="password"
+                  required
+                  value={pin}
+                  onChange={(e) => {
+                    setPin(e.target.value);
+                    setError('');
+                  }}
+                  placeholder="Enter PIN"
+                  className="w-full pl-10 pr-4 py-3 rounded-xl bg-white border border-[#E7DFD5] text-sm text-[#1C1917] focus:outline-none focus:border-[#800020] shadow-xs"
+                />
+              </div>
+              {error && (
+                <p className="text-xs text-rose-600 mt-1.5 font-medium">
+                  {error}
+                </p>
+              )}
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-3.5 px-6 rounded-xl bg-[#800020] hover:bg-[#660019] text-white font-bold text-sm shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-60"
+            >
+              <span>{loading ? 'Authenticating...' : 'Access Dashboard'}</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          </form>
+        )}
 
         {/* Back to Customer Website */}
         <div className="pt-2 text-center border-t border-[#E7DFD5]">

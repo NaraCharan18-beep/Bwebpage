@@ -209,18 +209,13 @@ export default function CollectionAlbumBrowser({
                       </div>
 
                       <div className="pt-2 border-t border-stone-100 flex items-center justify-between">
-                        {saree.show_price && saree.price ? (
-                          <span className="font-serif text-sm sm:text-base font-bold text-[#800020]">
-                            ₹{saree.price.toLocaleString('en-IN')}
-                          </span>
-                        ) : (
-                          <span className="text-[11px] font-semibold text-[#800020]">
-                            Enquire for Price
-                          </span>
-                        )}
+                        <span className="text-[11px] font-semibold text-[#800020] flex items-center gap-1">
+                          <MessageCircle className="w-3.5 h-3.5 text-[#25D366]" />
+                          <span>WhatsApp Enquiry</span>
+                        </span>
 
                         <span className="text-[10px] sm:text-xs font-bold text-[#800020] flex items-center gap-0.5 group-hover:underline">
-                          <span>Enquire</span>
+                          <span>View Saree</span>
                           <ChevronRight className="w-3 h-3" />
                         </span>
                       </div>
@@ -413,17 +408,40 @@ export default function CollectionAlbumBrowser({
 
             {filteredCollections.length === 0 && (
               <div className="text-center py-16 bg-white rounded-3xl border border-[#E7DFD5] p-8 space-y-3">
-                <Search className="w-10 h-10 text-stone-300 mx-auto" />
-                <h3 className="font-serif text-lg font-bold text-stone-700">No matching collections found</h3>
-                <p className="text-xs text-stone-500">
-                  Try searching for &quot;Silk&quot;, &quot;Cotton&quot;, &quot;Sico&quot;, or clear your search query.
-                </p>
-                <button
-                  onClick={() => setSearchQuery('')}
-                  className="px-5 py-2 rounded-full bg-[#800020] text-white text-xs font-bold"
-                >
-                  Show All Collections
-                </button>
+                {searchQuery ? (
+                  <>
+                    <Search className="w-10 h-10 text-stone-300 mx-auto" />
+                    <h3 className="font-serif text-lg font-bold text-stone-700">No matching collections found</h3>
+                    <p className="text-xs text-stone-500">
+                      Try searching for &quot;Silk&quot;, &quot;Cotton&quot;, &quot;Sico&quot;, or clear your search query.
+                    </p>
+                    <button
+                      onClick={() => setSearchQuery('')}
+                      className="px-5 py-2 rounded-full bg-[#800020] text-white text-xs font-bold cursor-pointer"
+                    >
+                      Show All Collections
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-10 h-10 text-[#D4AF37] mx-auto animate-pulse" />
+                    <h3 className="font-serif text-lg font-bold text-stone-800">New Handcrafted Collections Coming Soon</h3>
+                    <p className="text-xs text-stone-500 max-w-md mx-auto">
+                      Our Pochampally master weavers are handcrafting exclusive new designs. Contact our showroom directly on WhatsApp to preview exclusive unreleased sarees.
+                    </p>
+                    <div className="pt-2">
+                      <a
+                        href={`https://wa.me/${settings.whatsapp}?text=${encodeURIComponent('Hello Sri Laxmi Narshima Sarees, I would like to enquire about your latest Pochampally saree collections.')}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-md transition-all"
+                      >
+                        <MessageCircle className="w-4 h-4" />
+                        <span>Enquire on WhatsApp</span>
+                      </a>
+                    </div>
+                  </>
+                )}
               </div>
             )}
 
