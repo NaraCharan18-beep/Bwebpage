@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Image from 'next/image';
-import { Award, CheckCircle2, Compass, Layers } from 'lucide-react';
+import { Award, CheckCircle2, Layers, Sparkles, ShieldCheck, Landmark } from 'lucide-react';
 import { AboutContent } from '@/lib/types';
 
 interface AboutSectionProps {
@@ -31,33 +31,83 @@ export default function AboutSection({ content }: AboutSectionProps) {
         {/* Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
           
-          {/* Left Column: Visual Storytelling of the Loom */}
+          {/* Left Column: Visual Heritage Showcase (No sample images) */}
           <div className="lg:col-span-6 relative">
-            <div className="relative rounded-2xl overflow-hidden shadow-xl border-4 border-white bg-stone-100 aspect-[4/3] sm:aspect-[16/11]">
-              <Image
-                src={content.image_url || '/images/weaver_pit_loom.jpg'}
-                alt="Master weaver of Pochampally"
-                fill
-                className="object-cover object-center hover:scale-105 transition-transform duration-500"
-                sizes="(max-width: 768px) 100vw, 50vw"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent"></div>
-              <div className="absolute bottom-4 left-4 right-4 text-white p-2">
-                <span className="text-xs uppercase tracking-widest text-[#F7E7B4] font-medium block">
-                  Bhoodan Pochampally, Telangana
-                </span>
-                <span className="text-sm font-serif font-semibold">
-                  A master weaver rhythmically crafting double Ikat silk on a traditional pit loom
-                </span>
+            {content.image_url ? (
+              <div className="relative rounded-2xl overflow-hidden shadow-xl border-4 border-white bg-stone-100 aspect-[4/3] sm:aspect-[16/11]">
+                <Image
+                  src={content.image_url}
+                  alt="Master weaver of Pochampally"
+                  fill
+                  className="object-cover object-center hover:scale-105 transition-transform duration-500"
+                  sizes="(max-width: 768px) 100vw, 50vw"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent"></div>
+                <div className="absolute bottom-4 left-4 right-4 text-white p-2">
+                  <span className="text-xs uppercase tracking-widest text-[#F7E7B4] font-medium block">
+                    Bhoodan Pochampally, Telangana
+                  </span>
+                  <span className="text-sm font-serif font-semibold">
+                    Traditional double Ikat handloom weaving
+                  </span>
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="relative rounded-3xl overflow-hidden shadow-2xl border-4 border-[#D4AF37]/40 bg-gradient-to-br from-[#800020] via-[#5C0017] to-[#3B000F] p-8 sm:p-10 text-white select-none">
+                {/* Decorative Background Accents */}
+                <div className="absolute top-0 right-0 w-48 h-48 bg-[#D4AF37]/10 rounded-full blur-2xl pointer-events-none"></div>
+                <div className="absolute bottom-0 left-0 w-48 h-48 bg-black/30 rounded-full blur-xl pointer-events-none"></div>
 
-            {/* Corner Badge */}
-            <div className="absolute -bottom-5 -right-3 sm:-right-5 bg-[#800020] text-white p-4 rounded-xl shadow-lg border border-[#D4AF37] max-w-[210px] hidden sm:block">
-              <Award className="w-6 h-6 text-[#D4AF37] mb-1" />
-              <p className="text-xs font-semibold">GI Registration #4</p>
-              <p className="text-[10px] text-[#F7E7B4]">Protected by Geographical Indications of Goods Act</p>
-            </div>
+                <div className="relative z-10 space-y-6">
+                  {/* Crest Header */}
+                  <div className="flex items-center justify-between border-b border-[#D4AF37]/30 pb-4">
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="w-5 h-5 text-[#D4AF37]" />
+                      <span className="font-serif text-xs uppercase tracking-widest text-[#F7E7B4] font-bold">
+                        Authentic Handloom Heritage
+                      </span>
+                    </div>
+                    <div className="w-10 h-10 rounded-full bg-[#D4AF37]/20 border border-[#D4AF37]/50 flex items-center justify-center text-[#D4AF37]">
+                      <Award className="w-5 h-5" />
+                    </div>
+                  </div>
+
+                  {/* Main GI Title Card */}
+                  <div className="space-y-2">
+                    <span className="inline-block px-3 py-1 rounded-full bg-[#D4AF37]/20 text-[#F7E7B4] text-xs font-semibold tracking-wider uppercase border border-[#D4AF37]/30">
+                      GI Tag Registration #4
+                    </span>
+                    <h3 className="font-serif text-2xl sm:text-3xl font-bold text-white leading-snug">
+                      Bhoodan Pochampally: The Silk City of India
+                    </h3>
+                    <p className="text-xs sm:text-sm text-[#F7E7B4]/90 font-light leading-relaxed">
+                      Globally recognized for mathematical precision in Double Ikat resist-dyeing, preserved across generations of master artisan weaver families.
+                    </p>
+                  </div>
+
+                  {/* Prestige Pillars */}
+                  <div className="grid grid-cols-2 gap-4 pt-2">
+                    <div className="bg-white/10 backdrop-blur-xs rounded-xl p-3.5 border border-white/15">
+                      <ShieldCheck className="w-5 h-5 text-[#D4AF37] mb-1.5" />
+                      <h4 className="font-serif text-sm font-bold text-white">Silk Mark Certified</h4>
+                      <p className="text-[11px] text-white/80">100% Pure Natural Mulberry Silk Guaranteed</p>
+                    </div>
+                    <div className="bg-white/10 backdrop-blur-xs rounded-xl p-3.5 border border-white/15">
+                      <Landmark className="w-5 h-5 text-[#D4AF37] mb-1.5" />
+                      <h4 className="font-serif text-sm font-bold text-white">120+ Years Legacy</h4>
+                      <p className="text-[11px] text-white/80">Traditional Pit Looms with Zero Middlemen</p>
+                    </div>
+                  </div>
+
+                  {/* Footer Seal */}
+                  <div className="pt-2 border-t border-[#D4AF37]/20 text-center">
+                    <p className="text-[11px] uppercase tracking-wider text-[#F7E7B4] font-serif">
+                      Sri Laxmi Narshima Sares House • Bhoodan Pochampally
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Right Column: Detailed Narrative */}

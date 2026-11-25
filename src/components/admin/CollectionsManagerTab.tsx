@@ -207,7 +207,7 @@ export default function CollectionsManagerTab({
 
     const colId = `col-${Date.now()}`;
     const slug = newColName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-    const coverImage = newColCoverImage || newColUploadedSarees[0]?.url || '/images/hero_saree.jpg';
+    const coverImage = newColCoverImage || newColUploadedSarees[0]?.url || '';
 
     const sarees: SareeItem[] = newColUploadedSarees.map((s, idx) => ({
       id: `saree-${Date.now()}-${idx}`,
@@ -536,12 +536,18 @@ export default function CollectionsManagerTab({
           <div className="bg-white p-5 rounded-2xl border border-[#E7DFD5] shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
               <div className="relative w-16 h-16 rounded-xl overflow-hidden bg-stone-100 border-2 border-[#D4AF37]/50 shrink-0">
-                <Image
-                  src={selectedCollection.cover_image || '/images/hero_saree.jpg'}
-                  alt={selectedCollection.name}
-                  fill
-                  className="object-cover"
-                />
+                {selectedCollection.cover_image && !selectedCollection.cover_image.includes('hero_saree.jpg') ? (
+                  <Image
+                    src={selectedCollection.cover_image}
+                    alt={selectedCollection.name}
+                    fill
+                    className="object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full bg-[#800020] text-[#D4AF37] flex items-center justify-center font-bold text-sm">
+                    {selectedCollection.name.charAt(0)}
+                  </div>
+                )}
               </div>
 
               <div>
@@ -817,12 +823,18 @@ export default function CollectionsManagerTab({
                     onClick={() => setSelectedCollectionId(col.id)}
                     className="relative aspect-[16/10] w-full bg-stone-100 cursor-pointer group"
                   >
-                    <Image
-                      src={col.cover_image || '/images/hero_saree.jpg'}
-                      alt={col.name}
-                      fill
-                      className="object-cover object-top group-hover:scale-105 transition-transform duration-500"
-                    />
+                    {col.cover_image && !col.cover_image.includes('hero_saree.jpg') ? (
+                      <Image
+                        src={col.cover_image}
+                        alt={col.name}
+                        fill
+                        className="object-cover object-top group-hover:scale-105 transition-transform duration-500"
+                      />
+                    ) : (
+                      <div className="absolute inset-0 bg-gradient-to-br from-[#800020] to-[#4A0012] flex items-center justify-center text-white">
+                        <span className="font-serif font-bold text-sm px-4 text-center">{col.name}</span>
+                      </div>
+                    )}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-transparent to-transparent"></div>
 
                     {/* Saree Count Pill */}

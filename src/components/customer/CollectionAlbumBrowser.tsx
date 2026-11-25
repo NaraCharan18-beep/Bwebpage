@@ -224,18 +224,35 @@ export default function CollectionAlbumBrowser({
                 ))}
               </div>
             ) : (
-              <div className="text-center py-16 bg-white rounded-3xl border border-[#E7DFD5] p-8 space-y-3">
-                <Images className="w-12 h-12 text-stone-300 mx-auto" />
-                <h3 className="font-serif text-lg font-bold text-stone-700">No Sarees in this Collection Yet</h3>
-                <p className="text-xs text-stone-500 max-w-sm mx-auto">
-                  New sarees are being woven on the loom. Please check back shortly or enquire with us on WhatsApp.
+              <div className="text-center py-16 bg-white rounded-3xl border border-[#E7DFD5] p-8 space-y-4 max-w-xl mx-auto shadow-sm">
+                <div className="w-16 h-16 rounded-full bg-[#FAF7F2] border border-[#D4AF37]/50 flex items-center justify-center text-[#800020] mx-auto shadow-inner">
+                  <Sparkles className="w-8 h-8 text-[#D4AF37]" />
+                </div>
+                <h3 className="font-serif text-2xl font-bold text-[#1C1917]">
+                  {activeCollection.name}
+                </h3>
+                <p className="text-sm text-stone-600 leading-relaxed font-light">
+                  New authentic handcrafted sarees for this collection are being catalogued from our showroom. Enquire directly on WhatsApp to preview currently available weaves.
                 </p>
-                <button
-                  onClick={handleBackToCollections}
-                  className="px-5 py-2.5 rounded-full bg-[#800020] text-white text-xs font-bold"
-                >
-                  View Other Collections
-                </button>
+                <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
+                  <a
+                    href={`https://wa.me/${settings.whatsapp}?text=${encodeURIComponent(
+                      `Hello ${settings.shop_name}, I am interested in viewing available sarees in the "${activeCollection.name}" collection.`
+                    )}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full sm:w-auto px-6 py-3 rounded-full bg-[#25D366] hover:bg-[#1EBE5D] text-white text-xs font-bold shadow-md flex items-center justify-center gap-2 transition-transform hover:scale-105"
+                  >
+                    <MessageCircle className="w-4 h-4" />
+                    <span>Enquire About {activeCollection.name} on WhatsApp</span>
+                  </a>
+                  <button
+                    onClick={handleBackToCollections}
+                    className="w-full sm:w-auto px-5 py-3 rounded-full bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-semibold cursor-pointer"
+                  >
+                    View Other Collections
+                  </button>
+                </div>
               </div>
             )}
 
@@ -352,24 +369,38 @@ export default function CollectionAlbumBrowser({
                     onClick={() => handleOpenCollection(col)}
                     className="group bg-white rounded-3xl overflow-hidden border border-[#E7DFD5] hover:border-[#D4AF37] shadow-sm hover:shadow-2xl transition-all duration-300 cursor-pointer flex flex-col justify-between"
                   >
-                    {/* One Attractive Cover Photo (Requirement #3 & #5) */}
+                    {/* Collection Header / Cover Container */}
                     <div className="relative aspect-[4/3] w-full bg-stone-100 overflow-hidden">
-                      <Image
-                        src={col.cover_image || '/images/hero_saree.jpg'}
-                        alt={col.name}
-                        fill
-                        className="object-cover object-top group-hover:scale-105 transition-transform duration-700"
-                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                      />
-
-                      {/* Subtle Vignette Gradient */}
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent"></div>
+                      {col.cover_image && !col.cover_image.includes('hero_saree.jpg') ? (
+                        <>
+                          <Image
+                            src={col.cover_image}
+                            alt={col.name}
+                            fill
+                            className="object-cover object-top group-hover:scale-105 transition-transform duration-700"
+                            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent"></div>
+                        </>
+                      ) : (
+                        <div className="absolute inset-0 bg-gradient-to-br from-[#800020] via-[#5C0017] to-[#3B000F] flex flex-col items-center justify-center p-6 text-center select-none group-hover:from-[#660019] group-hover:to-[#2B000B] transition-colors">
+                          <div className="w-14 h-14 rounded-full bg-[#D4AF37]/20 border border-[#D4AF37]/50 flex items-center justify-center text-[#D4AF37] mb-3 shadow-inner group-hover:scale-110 transition-transform">
+                            <Sparkles className="w-7 h-7" />
+                          </div>
+                          <span className="text-[10px] uppercase tracking-widest text-[#D4AF37] font-bold">
+                            Direct Artisan Looms
+                          </span>
+                          <span className="text-xs text-[#F7E7B4] mt-1 font-medium">
+                            Bhoodan Pochampally Double Ikat
+                          </span>
+                        </div>
+                      )}
 
                       {/* Top Pill: Number of Sarees inside (Requirement #3) */}
                       <div className="absolute top-4 right-4 z-10">
-                        <span className="px-3.5 py-1 rounded-full bg-[#800020] text-white text-xs font-bold shadow-md flex items-center gap-1.5 border border-[#D4AF37]/40">
+                        <span className="px-3.5 py-1 rounded-full bg-[#800020]/90 backdrop-blur-xs text-white text-xs font-bold shadow-md flex items-center gap-1.5 border border-[#D4AF37]/40">
                           <Images className="w-3.5 h-3.5 text-[#D4AF37]" />
-                          <span>{count} Sarees</span>
+                          <span>{count > 0 ? `${count} Sarees` : 'Catalog Updating'}</span>
                         </span>
                       </div>
 

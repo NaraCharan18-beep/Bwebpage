@@ -70,7 +70,7 @@ export default function HomepageTab({ homepage, onSaveHomepage }: HomepageTabPro
       const updatedForm: HomepageContent = {
         ...form,
         hero_image_url: url,
-        hero_images: form.hero_images ? [url, ...form.hero_images.filter(x => x !== url)] : [url, '/images/hero_saree_model.jpg', '/images/hero_saree.jpg'],
+        hero_images: form.hero_images ? [url, ...form.hero_images.filter(x => x !== url)] : [url, '/images/hero_saree_model.jpg'],
       };
 
       setForm(updatedForm);
@@ -125,7 +125,7 @@ export default function HomepageTab({ homepage, onSaveHomepage }: HomepageTabPro
     const updatedForm: HomepageContent = {
       ...form,
       hero_image_url: '/images/hero_saree_model.jpg',
-      hero_images: ['/images/hero_saree_model.jpg', '/images/hero_saree.jpg'],
+      hero_images: ['/images/hero_saree_model.jpg'],
     };
     setForm(updatedForm);
     setIsUploading(true);
@@ -279,13 +279,13 @@ export default function HomepageTab({ homepage, onSaveHomepage }: HomepageTabPro
               </div>
 
               {/* Quick Switcher among active hero slides */}
-              {((form.hero_images && form.hero_images.length > 0) ? form.hero_images : ['/images/hero_saree_model.jpg', '/images/hero_saree.jpg']).length > 1 && (
+              {((form.hero_images && form.hero_images.length > 0) ? form.hero_images : ['/images/hero_saree_model.jpg']).length > 1 && (
                 <div className="p-2.5 bg-[#FAF7F2] rounded-xl border border-[#E7DFD5] space-y-1.5">
                   <span className="text-[10px] font-bold text-stone-600 uppercase tracking-wider block">
                     Active Hero Slides (Click to set primary):
                   </span>
                   <div className="flex gap-2">
-                    {((form.hero_images && form.hero_images.length > 0) ? form.hero_images : ['/images/hero_saree_model.jpg', '/images/hero_saree.jpg']).map((img, i) => {
+                    {((form.hero_images && form.hero_images.length > 0) ? form.hero_images : ['/images/hero_saree_model.jpg']).map((img, i) => {
                       const isCurrent = (form.hero_image_url || '/images/hero_saree_model.jpg') === img;
                       return (
                         <button

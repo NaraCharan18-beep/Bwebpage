@@ -157,12 +157,19 @@ export default function AboutTab({ about, onSaveAbout }: AboutTabProps) {
           </label>
           <div className="grid grid-cols-1 sm:grid-cols-12 gap-4 items-center">
             <div className="sm:col-span-5 relative aspect-[4/3] rounded-2xl overflow-hidden bg-stone-100 border border-stone-200">
-              <Image
-                src={form.image_url || '/images/weaver_pit_loom.jpg'}
-                alt="About section preview"
-                fill
-                className="object-cover object-center"
-              />
+              {form.image_url ? (
+                <Image
+                  src={form.image_url}
+                  alt="About section preview"
+                  fill
+                  className="object-cover object-center"
+                />
+              ) : (
+                <div className="w-full h-full bg-[#800020] text-[#D4AF37] flex flex-col items-center justify-center p-4 text-center">
+                  <span className="text-xs font-serif font-bold">GI Registration #4 Showcase Card</span>
+                  <span className="text-[10px] text-white/80 mt-1">Default Heritage Card Displayed</span>
+                </div>
+              )}
             </div>
             <div className="sm:col-span-7 space-y-2">
               <input

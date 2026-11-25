@@ -277,7 +277,7 @@ export default function AlbumsManagerTab({
     e.preventDefault();
     if (!formName.trim() || !formCollectionId) return;
 
-    const cover = formCoverImage || formPhotos.find((p) => p.is_cover)?.url || formPhotos[0]?.url || '/images/hero_saree.jpg';
+    const cover = formCoverImage || formPhotos.find((p) => p.is_cover)?.url || formPhotos[0]?.url || '';
 
     const newAlbum: Album = {
       id: editingAlbum ? editingAlbum.id : `alb-${Date.now()}`,
@@ -403,12 +403,18 @@ export default function AlbumsManagerTab({
             >
               {/* Cover Frame */}
               <div className="relative aspect-[16/10] w-full bg-stone-100 group">
-                <Image
-                  src={album.cover_image || '/images/hero_saree.jpg'}
-                  alt={album.name}
-                  fill
-                  className="object-cover object-top"
-                />
+                {album.cover_image && !album.cover_image.includes('hero_saree.jpg') ? (
+                  <Image
+                    src={album.cover_image}
+                    alt={album.name}
+                    fill
+                    className="object-cover object-top"
+                  />
+                ) : (
+                  <div className="absolute inset-0 bg-gradient-to-br from-[#800020] to-[#4A0012] flex items-center justify-center text-white">
+                    <span className="font-serif font-bold text-sm px-4 text-center">{album.name}</span>
+                  </div>
+                )}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent"></div>
 
                 {/* Badges */}

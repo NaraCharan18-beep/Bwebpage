@@ -248,13 +248,17 @@ export default function DashboardOverviewTab({
                   return (
                     <tr key={album.id} className="hover:bg-stone-50 transition-colors">
                       <td className="py-3 px-4">
-                        <div className="relative w-12 h-14 rounded-lg overflow-hidden bg-stone-100 border border-stone-200">
-                          <Image
-                            src={album.cover_image || '/images/hero_saree.jpg'}
-                            alt={album.name}
-                            fill
-                            className="object-cover object-top"
-                          />
+                        <div className="relative w-12 h-14 rounded-lg overflow-hidden bg-[#800020] text-[#D4AF37] border border-stone-200 flex items-center justify-center font-bold text-xs">
+                          {album.cover_image && !album.cover_image.includes('hero_saree.jpg') ? (
+                            <Image
+                              src={album.cover_image}
+                              alt={album.name}
+                              fill
+                              className="object-cover object-top"
+                            />
+                          ) : (
+                            <span>{album.name.charAt(0)}</span>
+                          )}
                         </div>
                       </td>
 

@@ -118,35 +118,33 @@ export function initLocalStore() {
     }
 
     cachedData.homepage = getFromStorage(STORAGE_KEYS.HOMEPAGE, initialHomepageContent);
-    if (!cachedData.homepage.hero_images || cachedData.homepage.hero_image_url === '/images/hero_saree.jpg') {
-      cachedData.homepage = {
-        ...cachedData.homepage,
-        hero_image_url: '/images/hero_saree_model.jpg',
-        hero_images: ['/images/hero_saree_model.jpg', '/images/hero_saree.jpg'],
-      };
-      setToStorage(STORAGE_KEYS.HOMEPAGE, cachedData.homepage);
-    }
+    cachedData.homepage = {
+      ...cachedData.homepage,
+      hero_image_url: '/images/hero_saree_model.jpg',
+      hero_images: ['/images/hero_saree_model.jpg'],
+    };
+    setToStorage(STORAGE_KEYS.HOMEPAGE, cachedData.homepage);
+
     cachedData.about = getFromStorage(STORAGE_KEYS.ABOUT, initialAboutContent);
+    cachedData.about = {
+      ...cachedData.about,
+      image_url: '',
+    };
+    setToStorage(STORAGE_KEYS.ABOUT, cachedData.about);
+
     cachedData.steps = getFromStorage(STORAGE_KEYS.STEPS, initialProcessSteps);
     
-    // Load collections
-    const storedCols = getFromStorage<Collection[]>(STORAGE_KEYS.COLLECTIONS, initialCollections);
-    cachedData.collections = storedCols.map(col => {
-      const matchInitial = initialCollections.find(ic => ic.id === col.id);
-      let sarees = Array.isArray(col.sarees) && col.sarees.length > 0 
-        ? col.sarees 
-        : (matchInitial?.sarees || []);
-      if (col.id === 'col-pochampally-silk' && !sarees.some(s => s.id === 'saree-pss-model')) {
-        const modelSaree = matchInitial?.sarees?.find(s => s.id === 'saree-pss-model');
-        if (modelSaree) {
-          sarees = [...sarees, modelSaree];
-        }
-      }
-      return {
+    // Load collections (filtered to remove old sample photos)
+    let storedCols = getFromStorage<Collection[]>(STORAGE_KEYS.COLLECTIONS, initialCollections);
+    if (storedCols && Array.isArray(storedCols)) {
+      storedCols = storedCols.map(col => ({
         ...col,
-        sarees,
-      };
-    });
+        cover_image: col.cover_image && !col.cover_image.startsWith('/images/saree_') && !col.cover_image.startsWith('/images/hero_saree') ? col.cover_image : '',
+        sarees: (col.sarees || []).filter(s => s.image_url && !s.image_url.startsWith('/images/')),
+      }));
+    }
+    cachedData.collections = storedCols && storedCols.length > 0 ? storedCols : initialCollections;
+    setToStorage(STORAGE_KEYS.COLLECTIONS, cachedData.collections);
 
     cachedData.albums = getFromStorage(STORAGE_KEYS.ALBUMS, initialAlbums);
     cachedData.enquiries = getFromStorage(STORAGE_KEYS.ENQUIRIES, []);
@@ -155,20 +153,24 @@ export function initLocalStore() {
     // Asynchronously hydrate from IndexedDB for any high-res photos that exceeded localStorage quota
     getIdb<Collection[]>(STORAGE_KEYS.COLLECTIONS).then((idbCols) => {
       if (idbCols && Array.isArray(idbCols) && idbCols.length > 0) {
-        cachedData.collections = idbCols;
+        const cleaned = idbCols.map(col => ({
+          ...col,
+          cover_image: col.cover_image && !col.cover_image.startsWith('/images/saree_') && !col.cover_image.startsWith('/images/hero_saree') ? col.cover_image : '',
+          sarees: (col.sarees || []).filter(s => s.image_url && !s.image_url.startsWith('/images/')),
+        }));
+        cachedData.collections = cleaned;
         notifyDataChanged();
       }
     }).catch(() => {});
 
     // Asynchronously hydrate homepage from IndexedDB in case hero photo was stored in IndexedDB
     getIdb<HomepageContent>(STORAGE_KEYS.HOMEPAGE).then((idbHome) => {
-      if (idbHome && idbHome.hero_image_url && idbHome.hero_image_url !== '/images/hero_saree.jpg') {
+      if (idbHome && idbHome.hero_image_url && !idbHome.hero_image_url.includes('hero_saree.jpg')) {
         cachedData.homepage = {
           ...cachedData.homepage,
           ...idbHome,
-          hero_images: idbHome.hero_images && idbHome.hero_images.length > 0 
-            ? idbHome.hero_images 
-            : ['/images/hero_saree_model.jpg', '/images/hero_saree.jpg'],
+          hero_image_url: idbHome.hero_image_url || '/images/hero_saree_model.jpg',
+          hero_images: ['/images/hero_saree_model.jpg'],
         };
         notifyDataChanged();
       }
@@ -265,10 +267,8 @@ export async function getHomepageContent(): Promise<HomepageContent> {
         cachedData.homepage = {
           ...cachedData.homepage,
           ...idbHome,
-          hero_image_url: idbHome.hero_image_url === '/images/hero_saree.jpg' ? '/images/hero_saree_model.jpg' : idbHome.hero_image_url,
-          hero_images: idbHome.hero_images && idbHome.hero_images.length > 0 
-            ? idbHome.hero_images 
-            : ['/images/hero_saree_model.jpg', '/images/hero_saree.jpg'],
+          hero_image_url: idbHome.hero_image_url === '/images/hero_saree.jpg' ? '/images/hero_saree_model.jpg' : (idbHome.hero_image_url || '/images/hero_saree_model.jpg'),
+          hero_images: ['/images/hero_saree_model.jpg'],
         };
         return cachedData.homepage;
       }
