@@ -144,13 +144,20 @@ export function initLocalStore() {
       cachedData.collections = initialCollections;
       setToStorage(STORAGE_KEYS.COLLECTIONS, initialCollections);
     } else {
-      // Ensure updated collection name "Free Size Lehengas" is applied
+      // Ensure updated collection names "Free Size Lehengas" and "Maslin Jamdani Sarees" are applied
       cachedData.collections = storedCols.map((c) => {
         if (c.id === 'col-large-lehengas' || c.name === 'Large Lehengas') {
           return {
             ...c,
             name: 'Free Size Lehengas',
             sarees: c.sarees?.map((s) => ({ ...s, collection_name: 'Free Size Lehengas' })),
+          };
+        }
+        if (c.id === 'col-muslin-jamdani' || c.name.toLowerCase().includes('muslin')) {
+          return {
+            ...c,
+            name: 'Maslin Jamdani Sarees',
+            sarees: c.sarees?.map((s) => ({ ...s, collection_name: 'Maslin Jamdani Sarees' })),
           };
         }
         return c;
@@ -174,6 +181,13 @@ export function initLocalStore() {
               ...c,
               name: 'Free Size Lehengas',
               sarees: c.sarees?.map((s) => ({ ...s, collection_name: 'Free Size Lehengas' })),
+            };
+          }
+          if (c.id === 'col-muslin-jamdani' || c.name.toLowerCase().includes('muslin')) {
+            return {
+              ...c,
+              name: 'Maslin Jamdani Sarees',
+              sarees: c.sarees?.map((s) => ({ ...s, collection_name: 'Maslin Jamdani Sarees' })),
             };
           }
           return c;
