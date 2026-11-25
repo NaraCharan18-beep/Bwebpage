@@ -134,31 +134,30 @@ export function initLocalStore() {
 
     cachedData.steps = getFromStorage(STORAGE_KEYS.STEPS, initialProcessSteps);
     
-    // Load collections (filtered to remove old sample photos)
-    let storedCols = getFromStorage<Collection[]>(STORAGE_KEYS.COLLECTIONS, initialCollections);
-    if (storedCols && Array.isArray(storedCols)) {
-      storedCols = storedCols.map(col => ({
-        ...col,
-        cover_image: col.cover_image && !col.cover_image.startsWith('/images/saree_') && !col.cover_image.startsWith('/images/hero_saree') ? col.cover_image : '',
-        sarees: (col.sarees || []).filter(s => s.image_url && !s.image_url.startsWith('/images/')),
-      }));
+    // Load collections: ensure we load the user's authentic PDF catalog collections
+    let storedCols = getFromStorage<Collection[]>(STORAGE_KEYS.COLLECTIONS, null as any);
+    const storedSareeCount = storedCols && Array.isArray(storedCols)
+      ? storedCols.reduce((sum, c) => sum + (c.sarees?.length || 0), 0)
+      : 0;
+    
+    if (!storedCols || storedSareeCount === 0 || !storedCols.some(c => c.id === 'col-silk-sarees')) {
+      cachedData.collections = initialCollections;
+      setToStorage(STORAGE_KEYS.COLLECTIONS, initialCollections);
+    } else {
+      cachedData.collections = storedCols;
     }
-    cachedData.collections = storedCols && storedCols.length > 0 ? storedCols : initialCollections;
-    setToStorage(STORAGE_KEYS.COLLECTIONS, cachedData.collections);
 
     cachedData.albums = getFromStorage(STORAGE_KEYS.ALBUMS, initialAlbums);
     cachedData.enquiries = getFromStorage(STORAGE_KEYS.ENQUIRIES, []);
     cachedData.initialized = true;
 
-    // Asynchronously hydrate from IndexedDB for any high-res photos that exceeded localStorage quota
+    // Asynchronously hydrate from IndexedDB if updated in Admin
     getIdb<Collection[]>(STORAGE_KEYS.COLLECTIONS).then((idbCols) => {
-      if (idbCols && Array.isArray(idbCols) && idbCols.length > 0) {
-        const cleaned = idbCols.map(col => ({
-          ...col,
-          cover_image: col.cover_image && !col.cover_image.startsWith('/images/saree_') && !col.cover_image.startsWith('/images/hero_saree') ? col.cover_image : '',
-          sarees: (col.sarees || []).filter(s => s.image_url && !s.image_url.startsWith('/images/')),
-        }));
-        cachedData.collections = cleaned;
+      const idbSareeCount = idbCols && Array.isArray(idbCols)
+        ? idbCols.reduce((sum, c) => sum + (c.sarees?.length || 0), 0)
+        : 0;
+      if (idbCols && Array.isArray(idbCols) && idbSareeCount > 0 && idbCols.some(c => c.id === 'col-silk-sarees')) {
+        cachedData.collections = idbCols;
         notifyDataChanged();
       }
     }).catch(() => {});

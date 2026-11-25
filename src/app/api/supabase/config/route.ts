@@ -59,8 +59,8 @@ export async function POST(req: NextRequest) {
     fs.writeFileSync(envPath, envContent.trim() + '\n', 'utf8');
 
     // Also update runtime process.env
-    process.env.NEXT_PUBLIC_SUPABASE_URL = sanitizedUrl;
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = trimmedKey;
+    process.env['NEXT_PUBLIC_SUPABASE_URL'] = sanitizedUrl;
+    process.env['NEXT_PUBLIC_SUPABASE_ANON_KEY'] = trimmedKey;
 
     return NextResponse.json({
       success: true,

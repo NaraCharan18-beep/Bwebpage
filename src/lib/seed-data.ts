@@ -130,93 +130,10 @@ export const initialProcessSteps: ProcessStep[] = [
   },
 ];
 
-// Unified Collections (Ready to receive sarees from upcoming PDF catalogs)
-export const initialCollections: Collection[] = [
-  {
-    id: 'col-pochampally-silk',
-    name: 'Pochampally Silk Sarees',
-    slug: 'pochampally-silk-sarees',
-    description: '100% pure mulberry silk handwoven Double Ikat sarees with rich gold zari pallus, diamond chowka motifs, and temple borders.',
-    cover_image: '',
-    display_order: 1,
-    status: 'active',
-    is_featured: true,
-    created_at: new Date().toISOString(),
-    sarees: [],
-  },
-  {
-    id: 'col-pochampally-cotton',
-    name: 'Pochampally Cotton Sarees',
-    slug: 'pochampally-cotton-sarees',
-    description: 'Lightweight, breathable 100% handloom cotton sarees crafted with authentic Ikat borders for everyday elegance and festive charm.',
-    cover_image: '',
-    display_order: 2,
-    status: 'active',
-    is_featured: true,
-    created_at: new Date().toISOString(),
-    sarees: [],
-  },
-  {
-    id: 'col-sico',
-    name: 'Sico Sarees',
-    slug: 'sico-sarees',
-    description: 'Comfortable silk-cotton blend sarees offering the lustrous sheen of pure silk with the featherweight ease of cotton.',
-    cover_image: '',
-    display_order: 3,
-    status: 'active',
-    is_featured: true,
-    created_at: new Date().toISOString(),
-    sarees: [],
-  },
-  {
-    id: 'col-cotton',
-    name: 'Cotton Sarees',
-    slug: 'cotton-sarees',
-    description: 'Traditional daily wear and office wear handloom cotton sarees woven on artisan pit looms in Telangana.',
-    cover_image: '',
-    display_order: 4,
-    status: 'active',
-    is_featured: false,
-    created_at: new Date().toISOString(),
-    sarees: [],
-  },
-  {
-    id: 'col-silk',
-    name: 'Silk Sarees',
-    slug: 'silk-sarees',
-    description: 'Opulent pure silk sarees featuring lustrous zari borders, auspicious colors, and master handloom weaves.',
-    cover_image: '',
-    display_order: 5,
-    status: 'active',
-    is_featured: false,
-    created_at: new Date().toISOString(),
-    sarees: [],
-  },
-  {
-    id: 'col-dress-materials',
-    name: 'Cotton Dress Materials',
-    slug: 'cotton-dress-materials',
-    description: 'Unstitched authentic Pochampally Ikat cotton suit fabrics and dress sets for custom tailoring.',
-    cover_image: '',
-    display_order: 6,
-    status: 'active',
-    is_featured: true,
-    created_at: new Date().toISOString(),
-    sarees: [],
-  },
-  {
-    id: 'col-festival',
-    name: 'Festival Collection',
-    slug: 'festival-collection',
-    description: 'Special celebratory handloom weaves curated for festive rituals, weddings, and grand occasions.',
-    cover_image: '',
-    display_order: 7,
-    status: 'active',
-    is_featured: true,
-    created_at: new Date().toISOString(),
-    sarees: [],
-  },
-];
+import catalogCollections from './catalog-data.json';
+
+// Unified Collections (Direct from Owner's PDF Catalogues)
+export const initialCollections: Collection[] = catalogCollections as Collection[];
 
 // Backward-compatible initialAlbums mapping for any remaining references
 export const initialAlbums: Album[] = initialCollections.map((col, idx) => ({
@@ -231,5 +148,20 @@ export const initialAlbums: Album[] = initialCollections.map((col, idx) => ({
   is_featured: Boolean(col.is_featured),
   created_at: col.created_at,
   updated_at: col.created_at,
-  photos: [],
+  photos: col.sarees.map((s, pIdx) => ({
+    id: s.id,
+    url: s.image_url,
+    is_cover: Boolean(s.is_cover),
+    order: s.order || pIdx + 1,
+    caption: s.name,
+    details: {
+      saree_name: s.name,
+      code: s.code,
+      color: s.color,
+      fabric: s.fabric,
+      availability: s.availability,
+      description: s.description,
+      price: s.price,
+    },
+  })),
 }));
